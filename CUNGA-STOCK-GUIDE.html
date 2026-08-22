@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cunga Stock — Tester Guide</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f1f5f9;
+    color: #1e293b;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: 40px auto;
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 32px rgba(30,58,138,0.10);
+  }
+
+  /* ── Cover Header ── */
+  .cover {
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 60%, #2563eb 100%);
+    color: #fff;
+    padding: 52px 56px 44px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+  }
+  .cover img {
+    width: 88px;
+    height: 88px;
+    object-fit: contain;
+    background: #fff;
+    border-radius: 18px;
+    padding: 6px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    flex-shrink: 0;
+  }
+  .cover-text h1 {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+  }
+  .cover-text h1 span { color: #93c5fd; }
+  .cover-text .sub {
+    font-size: 15px;
+    opacity: 0.80;
+    margin-top: 8px;
+  }
+  .cover-text .meta {
+    margin-top: 18px;
+    display: flex;
+    gap: 24px;
+    font-size: 12px;
+    opacity: 0.70;
+  }
+  .cover-text .meta span::before { content: '• '; }
+
+  /* ── Body ── */
+  .body { padding: 48px 56px; }
+
+  /* ── TOC ── */
+  .toc {
+    background: #f8faff;
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+    padding: 24px 28px;
+    margin-bottom: 40px;
+  }
+  .toc h2 { font-size: 14px; font-weight: 700; color: #1e3a8a; margin-bottom: 14px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .toc ol { padding-left: 18px; }
+  .toc li { margin: 5px 0; color: #2563eb; font-weight: 500; }
+
+  /* ── Section ── */
+  .section { margin-bottom: 48px; }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #dbeafe;
+  }
+  .section-num {
+    width: 32px; height: 32px;
+    background: #1e3a8a;
+    color: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 15px;
+    flex-shrink: 0;
+  }
+  .section h2 { font-size: 20px; font-weight: 700; color: #1e3a8a; }
+
+  h3 { font-size: 15px; font-weight: 700; color: #1e40af; margin: 22px 0 8px; }
+  p { margin-bottom: 10px; color: #334155; }
+
+  /* ── Feature Card ── */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin: 14px 0;
+  }
+  .feature-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px;
+    background: #fafbff;
+  }
+  .feature-card .icon { font-size: 22px; margin-bottom: 8px; }
+  .feature-card h4 { font-size: 13px; font-weight: 700; color: #1e3a8a; margin-bottom: 6px; }
+  .feature-card p { font-size: 12.5px; color: #64748b; margin: 0; }
+
+  /* ── Steps ── */
+  .steps { margin: 14px 0; counter-reset: step; }
+  .step {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 12px;
+    align-items: flex-start;
+  }
+  .step-num {
+    width: 24px; height: 24px;
+    background: #2563eb;
+    color: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 12px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .step-body { font-size: 13.5px; color: #334155; }
+  .step-body strong { color: #1e293b; }
+
+  /* ── Badge ── */
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+  .badge-blue   { background: #dbeafe; color: #1e40af; }
+  .badge-green  { background: #dcfce7; color: #166534; }
+  .badge-amber  { background: #fef9c3; color: #854d0e; }
+  .badge-red    { background: #fee2e2; color: #991b1b; }
+  .badge-navy   { background: #1e3a8a; color: #fff; }
+
+  /* ── Role Table ── */
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px; }
+  th { background: #1e3a8a; color: #fff; padding: 10px 14px; text-align: left; font-weight: 700; }
+  td { padding: 9px 14px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8faff; }
+  .tick { color: #16a34a; font-weight: 700; font-size: 16px; }
+  .cross { color: #dc2626; font-weight: 700; font-size: 16px; }
+
+  /* ── SQL Block ── */
+  .sql-box {
+    background: #0f172a;
+    color: #7dd3fc;
+    border-radius: 8px;
+    padding: 18px 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    margin: 14px 0;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .sql-kw { color: #f472b6; }
+  .sql-tb { color: #86efac; }
+  .sql-cm { color: #64748b; }
+
+  /* ── Info box ── */
+  .info-box {
+    border-left: 4px solid #2563eb;
+    background: #eff6ff;
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 12px 0;
+    font-size: 13px;
+    color: #1e40af;
+  }
+  .warn-box {
+    border-left: 4px solid #d97706;
+    background: #fffbeb;
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 12px 0;
+    font-size: 13px;
+    color: #92400e;
+  }
+
+  /* ── Divider ── */
+  hr { border: none; border-top: 1px solid #e2e8f0; margin: 36px 0; }
+
+  /* ── Footer ── */
+  .footer {
+    background: #1e3a8a;
+    color: rgba(255,255,255,0.7);
+    text-align: center;
+    padding: 20px;
+    font-size: 12px;
+  }
+  .footer strong { color: #fff; }
+
+  /* ── Print ── */
+  @media print {
+    body { background: #fff; }
+    .page { margin: 0; box-shadow: none; border-radius: 0; }
+    .section { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- COVER -->
+  <div class="cover">
+    <img src="public/cunga-logo-nobg.png" alt="Cunga Stock Logo" />
+    <div class="cover-text">
+      <h1>Cunga <span>Stock</span><br>System Guide</h1>
+      <p class="sub">Tester &amp; Partner Handover Document — What changed, what's new, and how to use it.</p>
+      <div class="meta">
+        <span>Version 2.0</span>
+        <span>July 2026</span>
+        <span>School Inventory Management</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="body">
+
+    <!-- TABLE OF CONTENTS -->
+    <div class="toc">
+      <h2>Contents</h2>
+      <ol>
+        <li>System Overview &amp; Roles</li>
+        <li>Branding — KPI → Cunga Stock</li>
+        <li>Stock Inventory — What's New</li>
+        <li>Uniform Management &amp; Sweater Numbers</li>
+        <li>Temporary Stock (Teacher Lending)</li>
+        <li>Reports &amp; Exports</li>
+        <li>History / Activity Log</li>
+        <li>Database Setup (Supabase SQL)</li>
+        <li>Testing Checklist</li>
+      </ol>
+    </div>
+
+
+    <!-- 1. OVERVIEW -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-num">1</div>
+        <h2>System Overview &amp; Roles</h2>
+      </div>
+
+      <p><strong>Cunga Stock</strong> is a school inventory management system. It tracks warehouse stock, student uniform issuances, and items temporarily lent to teachers. Two user roles control what each person can do.</p>
+
+      <h3>User Roles</h3>
+      <table>
+        <tr>
+          <th>Feature</th>
+          <th>Storekeeper</th>
+          <th>Supervisor (View Only)</th>
+        </tr>
+        <tr><td>View all stock &amp; data</td><td class="tick">✓</td><td class="tick">✓</td></tr>
+        <tr><td>Add / delete stock items</td><td class="tick">✓</td><td class="cross">✗</td></tr>
+        <tr><td>Issue &amp; restock items</td><td class="tick">✓</td><td class="cross">✗</td></tr>
+        <tr><td>Issue uniforms</td><td class="tick">✓</td><td class="cross">✗</td></tr>
+        <tr><td>Manage temporary loans</td><td class="tick">✓</td><td class="cross">✗</td></tr>
+        <tr><td>Export PDF &amp; CSV reports</td><td class="tick">✓</td><td class="tick">✓</td></tr>
+        <tr><td>View History / Activity Log</td><td class="tick">✓</td><td class="tick">✓</td></tr>
+      </table>
+
+      <p>When logged in as a Supervisor, the system shows a <span class="badge badge-blue">View Only</span> badge and hides all write/edit controls.</p>
+
+      <div class="info-box">
+        <strong>Login URL:</strong> Deploy URL on Vercel. All new users are automatically assigned the <strong>Storekeeper</strong> role by the database trigger. To make someone a Supervisor, change their role in the Supabase <code>user_roles</code> table.
+      </div>
+    </div>
+
+    <hr />
+
+
+    <!-- 2. BRANDING -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-num">2</div>
+        <h2>Branding — KPI → Cunga Stock</h2>
+      </div>
+
+      <p>The system has been fully rebranded from <em>KPI Stock</em> to <strong>Cunga Stock</strong>. Every place the old name appeared has been updated.</p>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="icon">🖼️</div>
+          <h4>Logo in Sidebar</h4>
+          <p>The Cunga Stock icon now appears at the top of the sidebar on every page. Both desktop and mobile sidebars updated.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🔑</div>
+          <h4>Login Page</h4>
+          <p>The login/signup page now shows the Cunga Stock logo and correct system name instead of the Package icon.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">📄</div>
+          <h4>PDF Reports</h4>
+          <p>All exported PDFs now carry the Cunga Stock logo, navy branding, and professional grid-style tables.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">📊</div>
+          <h4>File Names</h4>
+          <p>Exported files now save as <code>cunga-stock-report-...</code> instead of <code>kpi-stock-report-...</code>.</p>
+        </div>
+      </div>
+    </div>
+
+    <hr />
+
+
+    <!-- 3. STOCK INVENTORY -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-num">3</div>
+        <h2>Stock Inventory — What's New</h2>
+      </div>
+
+      <h3>🆕 Custom Low-Stock Threshold (per item)</h3>
+      <p>When adding a new stock item, you can now set the <strong>Low Stock Threshold</strong> — the quantity at which the system flags the item as "Low Stock". Previously this was fixed at 5 for everything.</p>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body">Go to <strong>Stock Items</strong> in the sidebar.</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body">Click <strong>Add Item</strong> (Storekeeper only).</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body">Fill in Item Name, Category, Initial Quantity.</div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body">Set <strong>Low Stock Threshold</strong> — e.g. enter <code>10</code> to flag the item when fewer than 10 remain.</div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-body">Click <strong>Save Item</strong>. The system will automatically show <span class="badge badge-amber">Low Stock</span> when quantity drops below your threshold.</div></div>
+      </div>
+
+      <h3>🆕 Recipient Name When Issuing Stock</h3>
+      <p>When issuing a stock item (pressing the <strong>–</strong> button on any row), you now enter a recipient name. This gets stored in the movement history so you can always trace who received what.</p>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body">Click the <strong>minus (–) button</strong> on any stock item row.</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body">Enter the <strong>Quantity to Issue</strong> first (top field).</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body">Enter the <strong>Issued To (Name)</strong> below it. <em>Letters only — numbers are blocked automatically.</em></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body">Click <strong>Confirm Issue</strong>.</div></div>
+      </div>
+
+      <p>The recipient name then appears in <strong>History → Stock Movements</strong> as a blue "Issued to: Name" tag, and in the <strong>Reports</strong> page under the "Issued To" column.</p>
+
+      <h3>🆕 Category Badges with Color Dots</h3>
+      <p>Category badges in the stock table now show a colored dot matching the category color for clearer alignment at a glance.</p>
+
+      <h3>Columns in Stock Table</h3>
+      <table>
+        <tr><th>Column</th><th>Meaning</th></tr>
+        <tr><td><strong>Total Added</strong></td><td>Cumulative total ever added to this item (including restocks).</td></tr>
+        <tr><td><strong>Remaining</strong></td><td>Current available quantity in the warehouse.</td></tr>
+        <tr><td><strong>Issued</strong></td><td>Total quantity issued out so far (does not decrease on restock).</td></tr>
+        <tr><td><strong>Status</strong></td><td><span class="badge badge-green">In Stock</span> / <span class="badge badge-amber">Low Stock</span> / <span class="badge badge-red">Out of Stock</span> — set automatically.</td></tr>
+      </table>
+    </div>
+
+    <hr />
+
+
+    <!-- 4. UNIFORM -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-num">4</div>
+        <h2>Uniform Management &amp; Sweater Numbers</h2>
+      </div>
+
+      <p>Found under <strong>Uniform Inventory</strong> in the sidebar. Manages student uniform issuances separately from the main stock.</p>
+
+      <h3>Basic Flow</h3>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Inventory tab:</strong> Add uniform items (e.g. "Grey Sweater Size M", quantity 50) and categories (e.g. "Sweater", "Shirt", "Trousers").</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Issue Uniform tab:</strong> Select the uniform, enter student name, quantity, and date. Click Confirm.</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Issued Records:</strong> See all issuances, edit records, or delete.</div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body"><strong>Reports tab:</strong> Filter by date range and download a professional PDF.</div></div>
+      </div>
+
+      <h3>🆕 Sweater Number Tracking</h3>
+      <p>When a uniform item belongs to a category that includes the word <strong>"Sweater"</strong> in its name, the issuance form automatically shows a required <strong>Sweater Number</strong> field.</p>
+
+      <div class="info-box">
+        <strong>Why?</strong> Each school sweater has a unique number sewn in. Recording it at issuance means when a sweater is found/lost, you can immediately look up who it belongs to.
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body">Make sure the uniform category name contains the word "Sweater" (e.g. <em>Sweater</em>, <em>School Sweater</em>, <em>Sweater Size L</em>).</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body">When issuing a sweater item, a <strong># Sweater Number *</strong> field appears — enter the number (e.g. <code>231</code>).</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body">The system prevents duplicate sweater numbers — issuing the same number twice gives an error.</div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body">The Issued Records table shows a <strong>#231</strong> badge in the Sweater # column for all sweater rows.</div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-body">For <strong>sweaters already given before this feature was added</strong>: click the Edit (pencil) icon on any existing sweater record → enter the sweater number in the edit dialog → Save.</div></div>
+      </div>
+
+      <div class="warn-box">
+        <strong>Database requirement:</strong> The <code>sweater_number</code> column must be added to the <code>uniform_issuances</code> table before this works. See Section 8 for the SQL.
+      </div>
+    </div>
+
+    <hr />
+
+
+    <!-- 5. TEMPORARY STOCK -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-num">5</div>
+        <h2>Temporary Stock (Teacher Lending)</h2>
+      </div>
+
+      <p>Found under <strong>Temporary Stock</strong> in the sidebar. A <strong>completely independent</strong> module — does not affect the main stock inventory, uniforms, or any other data. Used to track items temporarily lent to teachers (rulers, calculators, scissors, etc.).</p>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="icon">📦</div>
+          <h4>Inventory Tab</h4>
+          <p>Add lendable items (name, description, quantity). Shows Total / Available / Out counts per item. Click "Lend" on any item to issue it.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">⏱️</div>
+          <h4>Active Loans Tab</h4>
+          <p>All items currently out with teachers. Overdue items highlight in amber with "X days overdue" tag. Click "Returned" when the teacher brings it back.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">✅</div>
+          <h4>History Tab</h4>
+          <p>Full log of returned items with the actual return date recorded.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">📊</div>
+          <h4>Reports Tab</h4>
+          <p>Filter by date range. Export the full lending report as PDF (with Cunga Stock branding) or CSV.</p>
+        </div>
+      </div>
+
+      <h3>How to Add a Lendable Item</h3>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body">Go to <strong>Temporary Stock</strong> in the sidebar.</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body">Click <strong>Add Item</strong>.</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body">Enter <strong>Item Name</strong> (e.g. "30cm Ruler"), optional Description, and <strong>Total Quantity</strong> (how many of this item are available to lend).</div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-body">Click <strong>Add Item</strong>. It now appears in the Inventory table.</div></div>
+      </div>
+
+      <h3>How to Lend an Item to a Teacher</h3>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body">In the <strong>Inventory tab</strong>, find the item and click the <strong>Lend</strong> button on that row. (Button is disabled if quantity is 0.)</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body">Fill in: <strong>Teacher Name *</strong>, Department/Subject, Quantity to lend, Date Borrowed, Expected Return Date, Notes.</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body">Click <strong>Confirm Lending</strong>. The available quantity decrements immediately.</div></div>
+      </div>
+
+      <h3>How to Mark an Item as Returned</h3>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body">Go to the <strong>Active Loans tab</strong>.</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body">Find the record and click the green <strong>Returned</strong> button.</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body">Confirm. Today's date is recorded as the return date and the item quantity is restored.</div></div>
+      </div>
+
+      <div class="warn-box">
+        <strong>Database requirement:</strong> Tables <code>temp_stock_items</code> and <code>temp_stock_loans</code> must be created in Supabase. See Section 8 for the SQL. After running, reload the schema cache: Supabase Dashboard → Settings → API → Reload schema cache.
+      </div>
+    </div>
+
+    <hr />
+
+
+    <!-- 6. REPORTS -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-num">6</div>
+        <h2>Reports &amp; Exports</h2>
+      </div>
+
+      <h3>Stock Reports (Reports page)</h3>
+      <p>Choose a report type from the cards at the top, then filter by date range, category, and status.</p>
+      <table>
+        <tr><th>Report Type</th><th>Shows</th></tr>
+        <tr><td>Full Stock Report</td><td>All items with Total Added / Remaining / Issued columns</td></tr>
+        <tr><td>In Stock Items</td><td>Only items currently in stock</td></tr>
+        <tr><td>Out of Stock</td><td>Items at zero quantity</td></tr>
+        <tr><td>Low Stock Alert</td><td>Items below their threshold</td></tr>
+        <tr><td>Movement History</td><td>All stock movements with <strong>Issued To</strong> column</td></tr>
+      </table>
+
+      <h3>Export Options</h3>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="icon">📊</div>
+          <h4>Export CSV</h4>
+          <p>Downloads a spreadsheet file. Opens in Excel or Google Sheets. Saved as <code>cunga-stock-report-...</code></p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">📄</div>
+          <h4>Export PDF</h4>
+          <p>Professional PDF with Cunga Stock logo, navy header, grid-style table, and "Page X of Y • timestamp" footer.</p>
+        </div>
+      </div>
+
+      <h3>Uniform Reports</h3>
+      <p>In <strong>Uniform Inventory → Reports tab</strong>: pick a start and end date, click Filter, then Download PDF. The PDF groups records by uniform category and shows subtotals + grand total.</p>
+
+      <h3>Temporary Stock Reports</h3>
+      <p>In <strong>Temporary Stock → Reports tab</strong>: pick a date range and click Generate Report. Shows all loans in that period. Export as PDF or CSV.</p>
+    </div>
+
+    <hr />
+
+
+    <!-- 7. HISTORY -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-num">7</div>
+        <h2>History / Activity Log</h2>
+      </div>
+
+      <p>Found under <strong>History</strong> in the sidebar. Two tabs:</p>
+
+      <table>
+        <tr><th>Tab</th><th>What it shows</th></tr>
+        <tr>
+          <td><strong>Stock Movements</strong></td>
+          <td>
+            Every stock change: Added, Issued, Returned (restock), Adjusted.<br/>
+            For "Issued" movements — shows a blue <em>"Issued to: Name"</em> tag if a recipient was recorded.<br/>
+            Filter by movement type. Search by item name or notes.
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Activity Log</strong></td>
+          <td>
+            System-level actions: who created/deleted/updated which item and when.
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <hr />
+
+
+    <!-- 8. DATABASE -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-num">8</div>
+        <h2>Database Setup (Supabase SQL)</h2>
+      </div>
+
+      <p>The following SQL is also saved in the project at:<br/>
+      <code>supabase/migrations/20260724120000_add_sweater_numbers_and_temp_stock.sql</code></p>
+
+      <p>Copy and paste this into <strong>Supabase Dashboard → SQL Editor → New query</strong> and click Run:</p>
+
+<div class="sql-box"><span class="sql-cm">-- 1. Add total_added and issued to stock_items (if missing)</span>
+<span class="sql-kw">ALTER TABLE</span> public.<span class="sql-tb">stock_items</span>
+  <span class="sql-kw">ADD COLUMN IF NOT EXISTS</span> total_added INTEGER <span class="sql-kw">NOT NULL DEFAULT</span> 0;
+<span class="sql-kw">ALTER TABLE</span> public.<span class="sql-tb">stock_items</span>
+  <span class="sql-kw">ADD COLUMN IF NOT EXISTS</span> issued INTEGER <span class="sql-kw">NOT NULL DEFAULT</span> 0;
+
+<span class="sql-cm">-- 2. Uniform system tables (safe - uses IF NOT EXISTS)</span>
+<span class="sql-kw">CREATE TABLE IF NOT EXISTS</span> public.<span class="sql-tb">uniform_categories</span> (
+  id UUID <span class="sql-kw">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  name TEXT <span class="sql-kw">NOT NULL UNIQUE</span>,
+  created_at TIMESTAMPTZ <span class="sql-kw">DEFAULT</span> now() <span class="sql-kw">NOT NULL</span>
+);
+<span class="sql-kw">CREATE TABLE IF NOT EXISTS</span> public.<span class="sql-tb">uniform_items</span> (
+  id UUID <span class="sql-kw">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  name TEXT <span class="sql-kw">NOT NULL</span>,
+  category TEXT <span class="sql-kw">NOT NULL DEFAULT</span> <span class="sql-cm">'Uncategorized'</span>,
+  total_quantity INTEGER <span class="sql-kw">NOT NULL DEFAULT</span> 0,
+  remaining_quantity INTEGER <span class="sql-kw">NOT NULL DEFAULT</span> 0,
+  created_at TIMESTAMPTZ <span class="sql-kw">DEFAULT</span> now() <span class="sql-kw">NOT NULL</span>,
+  updated_at TIMESTAMPTZ <span class="sql-kw">DEFAULT</span> now() <span class="sql-kw">NOT NULL</span>
+);
+<span class="sql-kw">CREATE TABLE IF NOT EXISTS</span> public.<span class="sql-tb">uniform_issuances</span> (
+  id UUID <span class="sql-kw">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  uniform_id UUID <span class="sql-kw">REFERENCES</span> public.uniform_items(id) <span class="sql-kw">ON DELETE CASCADE NOT NULL</span>,
+  student_name TEXT <span class="sql-kw">NOT NULL</span>,
+  quantity_taken INTEGER <span class="sql-kw">NOT NULL DEFAULT</span> 1,
+  issue_date DATE <span class="sql-kw">NOT NULL DEFAULT</span> CURRENT_DATE,
+  created_at TIMESTAMPTZ <span class="sql-kw">DEFAULT</span> now() <span class="sql-kw">NOT NULL</span>
+);
+
+<span class="sql-cm">-- 3. Sweater number column (Feature: track sweater numbers)</span>
+<span class="sql-kw">ALTER TABLE</span> public.<span class="sql-tb">uniform_issuances</span>
+  <span class="sql-kw">ADD COLUMN IF NOT EXISTS</span> sweater_number TEXT;
+
+<span class="sql-cm">-- 4. Temporary Stock tables (Feature: teacher lending)</span>
+<span class="sql-kw">CREATE TABLE IF NOT EXISTS</span> public.<span class="sql-tb">temp_stock_items</span> (
+  id UUID <span class="sql-kw">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  name TEXT <span class="sql-kw">NOT NULL</span>,
+  description TEXT,
+  total_quantity INTEGER <span class="sql-kw">NOT NULL DEFAULT</span> 1,
+  available_quantity INTEGER <span class="sql-kw">NOT NULL DEFAULT</span> 1,
+  created_at TIMESTAMPTZ <span class="sql-kw">DEFAULT</span> now() <span class="sql-kw">NOT NULL</span>,
+  updated_at TIMESTAMPTZ <span class="sql-kw">DEFAULT</span> now() <span class="sql-kw">NOT NULL</span>
+);
+<span class="sql-kw">CREATE TABLE IF NOT EXISTS</span> public.<span class="sql-tb">temp_stock_loans</span> (
+  id UUID <span class="sql-kw">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  item_id UUID <span class="sql-kw">NOT NULL REFERENCES</span> public.temp_stock_items(id) <span class="sql-kw">ON DELETE CASCADE</span>,
+  teacher_name TEXT <span class="sql-kw">NOT NULL</span>,
+  department TEXT,
+  quantity INTEGER <span class="sql-kw">NOT NULL DEFAULT</span> 1,
+  borrowed_date DATE <span class="sql-kw">NOT NULL DEFAULT</span> CURRENT_DATE,
+  expected_return_date DATE,
+  actual_return_date DATE,
+  status TEXT <span class="sql-kw">NOT NULL DEFAULT</span> <span class="sql-cm">'borrowed'</span>,
+  notes TEXT,
+  created_at TIMESTAMPTZ <span class="sql-kw">DEFAULT</span> now() <span class="sql-kw">NOT NULL</span>,
+  updated_at TIMESTAMPTZ <span class="sql-kw">DEFAULT</span> now() <span class="sql-kw">NOT NULL</span>
+);
+
+<span class="sql-cm">-- 5. Enable RLS + policies on all new tables</span>
+<span class="sql-kw">ALTER TABLE</span> public.uniform_categories  <span class="sql-kw">ENABLE ROW LEVEL SECURITY</span>;
+<span class="sql-kw">ALTER TABLE</span> public.uniform_items       <span class="sql-kw">ENABLE ROW LEVEL SECURITY</span>;
+<span class="sql-kw">ALTER TABLE</span> public.uniform_issuances   <span class="sql-kw">ENABLE ROW LEVEL SECURITY</span>;
+<span class="sql-kw">ALTER TABLE</span> public.temp_stock_items    <span class="sql-kw">ENABLE ROW LEVEL SECURITY</span>;
+<span class="sql-kw">ALTER TABLE</span> public.temp_stock_loans    <span class="sql-kw">ENABLE ROW LEVEL SECURITY</span>;
+
+<span class="sql-kw">CREATE POLICY IF NOT EXISTS</span> <span class="sql-cm">"auth_uniform_categories"</span>
+  <span class="sql-kw">ON</span> public.uniform_categories <span class="sql-kw">FOR ALL TO</span> authenticated <span class="sql-kw">USING</span>(true) <span class="sql-kw">WITH CHECK</span>(true);
+<span class="sql-kw">CREATE POLICY IF NOT EXISTS</span> <span class="sql-cm">"auth_uniform_items"</span>
+  <span class="sql-kw">ON</span> public.uniform_items <span class="sql-kw">FOR ALL TO</span> authenticated <span class="sql-kw">USING</span>(true) <span class="sql-kw">WITH CHECK</span>(true);
+<span class="sql-kw">CREATE POLICY IF NOT EXISTS</span> <span class="sql-cm">"auth_uniform_issuances"</span>
+  <span class="sql-kw">ON</span> public.uniform_issuances <span class="sql-kw">FOR ALL TO</span> authenticated <span class="sql-kw">USING</span>(true) <span class="sql-kw">WITH CHECK</span>(true);
+<span class="sql-kw">CREATE POLICY IF NOT EXISTS</span> <span class="sql-cm">"auth_temp_stock_items"</span>
+  <span class="sql-kw">ON</span> public.temp_stock_items <span class="sql-kw">FOR ALL TO</span> authenticated <span class="sql-kw">USING</span>(true) <span class="sql-kw">WITH CHECK</span>(true);
+<span class="sql-kw">CREATE POLICY IF NOT EXISTS</span> <span class="sql-cm">"auth_temp_stock_loans"</span>
+  <span class="sql-kw">ON</span> public.temp_stock_loans <span class="sql-kw">FOR ALL TO</span> authenticated <span class="sql-kw">USING</span>(true) <span class="sql-kw">WITH CHECK</span>(true);</div>
+
+      <div class="warn-box">
+        <strong>After running the SQL:</strong> Go to Supabase Dashboard → Settings (⚙️) → API → scroll down → click <strong>"Reload schema cache"</strong>. Wait 10 seconds, then refresh the app. This is required every time you add new tables.
+      </div>
+
+      <h3>What each table does</h3>
+      <table>
+        <tr><th>Table</th><th>Purpose</th><th>Status</th></tr>
+        <tr><td><code>profiles</code></td><td>User profile info (name, avatar)</td><td><span class="badge badge-green">Exists</span></td></tr>
+        <tr><td><code>user_roles</code></td><td>Storekeeper / admin role assignment</td><td><span class="badge badge-green">Exists</span></td></tr>
+        <tr><td><code>categories</code></td><td>Stock item categories with colors</td><td><span class="badge badge-green">Exists</span></td></tr>
+        <tr><td><code>stock_items</code></td><td>Main warehouse inventory</td><td><span class="badge badge-green">Exists</span></td></tr>
+        <tr><td><code>stock_movements</code></td><td>History of all stock changes</td><td><span class="badge badge-green">Exists</span></td></tr>
+        <tr><td><code>activity_logs</code></td><td>System action audit trail</td><td><span class="badge badge-green">Exists</span></td></tr>
+        <tr><td><code>uniform_categories</code></td><td>Uniform types (Sweater, Shirt, etc.)</td><td><span class="badge badge-amber">Run SQL</span></td></tr>
+        <tr><td><code>uniform_items</code></td><td>Uniform stock per item</td><td><span class="badge badge-amber">Run SQL</span></td></tr>
+        <tr><td><code>uniform_issuances</code></td><td>Records of uniforms issued to students</td><td><span class="badge badge-amber">Run SQL</span></td></tr>
+        <tr><td><code>temp_stock_items</code></td><td>Items available to lend to teachers</td><td><span class="badge badge-red">New — Run SQL</span></td></tr>
+        <tr><td><code>temp_stock_loans</code></td><td>Teacher lending records</td><td><span class="badge badge-red">New — Run SQL</span></td></tr>
+      </table>
+    </div>
+
+    <hr />
+
+
+    <!-- 9. TESTING CHECKLIST -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-num">9</div>
+        <h2>Testing Checklist</h2>
+      </div>
+
+      <p>Go through each item below to confirm the system is working correctly after deployment.</p>
+
+      <h3>Auth &amp; Branding</h3>
+      <table>
+        <tr><th style="width:60%">Test</th><th>Expected Result</th></tr>
+        <tr><td>Open the app URL</td><td>Login page shows Cunga Stock logo + "Cunga Stock" title</td></tr>
+        <tr><td>Log in with valid credentials</td><td>Redirect to Dashboard. Sidebar shows logo + "Cunga Stock"</td></tr>
+        <tr><td>Page title in browser tab</td><td>Shows "Cunga Stock" (not "KPI")</td></tr>
+      </table>
+
+      <h3>Stock Inventory</h3>
+      <table>
+        <tr><th style="width:60%">Test</th><th>Expected Result</th></tr>
+        <tr><td>Add item with threshold = 3, qty = 10</td><td>Status shows In Stock</td></tr>
+        <tr><td>Issue 8 items → remaining = 2</td><td>Status auto-changes to Low Stock (below 3)</td></tr>
+        <tr><td>Issue with name "John Doe"</td><td>Name field accepts letters, rejects numbers</td></tr>
+        <tr><td>Check History → Stock Movements</td><td>Shows blue "Issued to: John Doe" tag on issued movement</td></tr>
+        <tr><td>Delete an item</td><td>AlertDialog appears (no browser confirm popup)</td></tr>
+      </table>
+
+      <h3>Uniform Management</h3>
+      <table>
+        <tr><th style="width:60%">Test</th><th>Expected Result</th></tr>
+        <tr><td>Add category named "Sweater"</td><td>Category appears in dropdown</td></tr>
+        <tr><td>Add uniform item in Sweater category</td><td>Item appears in inventory with remaining qty</td></tr>
+        <tr><td>Issue the sweater uniform</td><td>Sweater Number field appears (required). Other categories don't show it.</td></tr>
+        <tr><td>Try issuing sweater number "231" twice</td><td>Second attempt shows "Duplicate Sweater Number" error</td></tr>
+        <tr><td>Edit existing record (non-sweater)</td><td>No sweater number field in edit dialog</td></tr>
+        <tr><td>Edit existing sweater record</td><td>Sweater number field visible, can be filled in</td></tr>
+      </table>
+
+      <h3>Temporary Stock</h3>
+      <table>
+        <tr><th style="width:60%">Test</th><th>Expected Result</th></tr>
+        <tr><td>Open Temporary Stock page</td><td>Page loads (no error). If SQL not run: run it first</td></tr>
+        <tr><td>Add item "30cm Ruler", qty 5</td><td>Appears in Inventory tab. Available = 5</td></tr>
+        <tr><td>Click Lend → enter teacher "Mr Smith", qty 2</td><td>Available drops to 3. Loan appears in Active Loans tab</td></tr>
+        <tr><td>Add expected return date in the past</td><td>Loan shows amber overdue highlight with "X days overdue"</td></tr>
+        <tr><td>Click Returned on active loan</td><td>Moves to History tab. Available goes back up to 5</td></tr>
+        <tr><td>Reports tab: set date range → Generate</td><td>Table shows loans in range. PDF/CSV export works</td></tr>
+      </table>
+
+      <h3>Reports</h3>
+      <table>
+        <tr><th style="width:60%">Test</th><th>Expected Result</th></tr>
+        <tr><td>Export PDF from Reports page</td><td>Downloads as <code>cunga-stock-report-...</code> with logo &amp; navy headers</td></tr>
+        <tr><td>Export CSV</td><td>Downloads as <code>cunga-stock-report-...</code></td></tr>
+        <tr><td>Movement History report — check "Issued To" column</td><td>Shows recipient name for issued movements</td></tr>
+      </table>
+    </div>
+
+  </div><!-- /body -->
+
+  <div class="footer">
+    <strong>Cunga Stock Management System</strong> &nbsp;·&nbsp; Built July 2026 &nbsp;·&nbsp; School Inventory Management
+  </div>
+
+</div><!-- /page -->
+
+</body>
+</html>
