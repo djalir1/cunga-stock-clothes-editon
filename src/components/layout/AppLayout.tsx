@@ -90,7 +90,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // Close search dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (!(e.target as Node).closest('.search-container')) {
+      if (!(e.target as Element).closest('.search-container')) {
         setShowSearchResults(false);
       }
     };
