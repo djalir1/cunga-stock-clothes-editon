@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { MovementType } from '@/lib/types';
+import { variantLabel } from '@/lib/format';
 import { useEffect } from 'react';
 
 interface StockMovementWithDetails {
@@ -60,12 +61,14 @@ export function useStockMovements(itemId?: string, limit = 50) {
       const { data: movements, error } = await query;
       if (error) throw error;
 
-      // Fetch item details
+      // Fetch item and size / colour details
       const itemIds = [...new Set(movements.map(m => m.item_id))];
-      const { data: items } = await supabase
-        .from('stock_items')
-        .select('id, name, category_id')
-        .in('id', itemIds);
+      const variantIds = [...new Set(movements.map(m => m.variant_id))];
+      const [{ data: items }, { data: variants }] = await Promise.all([
+        supabase.from('stock_items').select('id, name, category_id').in('id', itemIds),
+        supabase.from('stock_variants').select('id, size, color').in('id', variantIds),
+      ]);
+      const variantMap = new Map((variants ?? []).map(v => [v.id, v]));
 
       // Fetch categories
       const categoryIds = [...new Set(items?.filter(i => i.category_id).map(i => i.category_id) || [])];
@@ -119,7 +122,9 @@ export function useStockMovements(itemId?: string, limit = 50) {
         notes: m.notes,
         performed_by: m.performed_by,
         created_at: m.created_at,
-        item_name: itemMap[m.item_id]?.name || null,
+        item_name: itemMap[m.item_id]
+          ? variantLabel(itemMap[m.item_id].name, variantMap.get(m.variant_id)?.size ?? null, variantMap.get(m.variant_id)?.color ?? null)
+          : null,
         category_name: itemMap[m.item_id]?.category?.name || null,
         category_color: itemMap[m.item_id]?.category?.color || null,
         performer_name: m.performed_by ? performerMap[m.performed_by] || null : null,

@@ -6,7 +6,17 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   storekeeper: 'Storekeeper',
   admin: 'Supervisor (view only)',
 };
-export type MovementType = 'added' | 'issued' | 'returned' | 'adjusted';
+// 'issued' = sold · 'loaned' = out with a customer on approval · 'loan_returned' = back on the shelf
+export type MovementType = 'added' | 'issued' | 'returned' | 'adjusted' | 'loaned' | 'loan_returned';
+
+export const MOVEMENT_LABELS: Record<MovementType, string> = {
+  added: 'Added',
+  issued: 'Sold',
+  returned: 'Restocked',
+  adjusted: 'Adjusted',
+  loaned: 'Out on approval',
+  loan_returned: 'Back from customer',
+};
 
 export interface Category {
   id: string;
@@ -25,12 +35,27 @@ export interface StockItem {
   total_added: number;
   issued: number; // units sold
   status: StockStatus;
+  image_url: string | null;
   person_responsible: string | null;
   notes: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
   category?: Category;
+}
+
+/** One size × colour of an item. Stock is counted here; the item holds the totals. */
+export interface StockVariant {
+  id: string;
+  item_id: string;
+  size: string | null;
+  color: string | null;
+  quantity: number;
+  total_added: number;
+  sold: number;
+  /** Usual asking price — a hint only; the real price is typed on every sale */
+  default_price: number | null;
+  cost_price: number | null;
 }
 
 export interface StockMovement {
@@ -43,7 +68,7 @@ export interface StockMovement {
   notes: string | null;
   performed_by: string | null;
   created_at: string;
-  item?: StockItem;
+  item?: Pick<StockItem, 'name'>;
   performer?: Profile;
 }
 

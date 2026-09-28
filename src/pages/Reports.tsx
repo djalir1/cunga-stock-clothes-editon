@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useStockItems } from '@/hooks/useStockItems';
 import { useStockMovements } from '@/hooks/useStockMovements';
+import { MOVEMENT_LABELS } from '@/lib/types';
 import { useCategories } from '@/hooks/useCategories';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -93,7 +94,7 @@ export default function Reports() {
         const date = format(new Date(m.created_at), 'yyyy-MM-dd');
         const time = format(new Date(m.created_at), 'HH:mm:ss');
         const itemName = m.item_name || 'Unknown';
-        csvContent += `${date},${time},"${itemName}",${m.movement_type},${m.quantity},${m.previous_quantity},${m.new_quantity},"${m.notes?.startsWith('Sold to: ') ? '' : (m.notes || '')}","${getRecipient(m.notes) || ''}"\n`;
+        csvContent += `${date},${time},"${itemName}",${MOVEMENT_LABELS[m.movement_type] ?? m.movement_type},${m.quantity},${m.previous_quantity},${m.new_quantity},"${m.notes?.startsWith('Sold to: ') ? '' : (m.notes || '')}","${getRecipient(m.notes) || ''}"\n`;
       });
     } else {
       // Updated CSV headers + columns for the three quantity fields
@@ -177,7 +178,7 @@ export default function Reports() {
         format(new Date(m.created_at), 'dd MMM yyyy'),
         format(new Date(m.created_at), 'HH:mm:ss'),
         m.item_name || 'Unknown',
-        m.movement_type.charAt(0).toUpperCase() + m.movement_type.slice(1),
+        MOVEMENT_LABELS[m.movement_type] ?? m.movement_type,
         m.quantity.toString(),
         m.previous_quantity.toString(),
         m.new_quantity.toString(),
@@ -249,8 +250,10 @@ export default function Reports() {
     switch (type) {
       case 'added': return <Badge className="bg-success/20 text-success border-0"><TrendingUp className="w-3 h-3 mr-1" />Added</Badge>;
       case 'issued': return <Badge className="bg-destructive/20 text-destructive border-0"><TrendingDown className="w-3 h-3 mr-1" />Sold</Badge>;
-      case 'returned': return <Badge className="bg-primary/20 text-primary border-0">Returned</Badge>;
+      case 'returned': return <Badge className="bg-primary/20 text-primary border-0">Restocked</Badge>;
       case 'adjusted': return <Badge variant="outline">Adjusted</Badge>;
+      case 'loaned': return <Badge className="bg-blue-500/20 text-blue-500 border-0">Out on approval</Badge>;
+      case 'loan_returned': return <Badge className="bg-success/20 text-success border-0">Back from customer</Badge>;
       default: return <Badge variant="outline">{type}</Badge>;
     }
   };

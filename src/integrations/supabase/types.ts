@@ -68,6 +68,132 @@ export type Database = {
         }
         Relationships: []
       }
+      customers: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      debt_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          debt_id: string
+          id: string
+          method: string
+          note: string | null
+          paid_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          debt_id: string
+          id?: string
+          method?: string
+          note?: string | null
+          paid_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          debt_id?: string
+          id?: string
+          method?: string
+          note?: string | null
+          paid_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debt_payments_debt_id_fkey"
+            columns: ["debt_id"]
+            isOneToOne: false
+            referencedRelation: "debt_balances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debt_payments_debt_id_fkey"
+            columns: ["debt_id"]
+            isOneToOne: false
+            referencedRelation: "debts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      debts: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          due_date: string | null
+          id: string
+          notes: string | null
+          sale_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          sale_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          sale_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debts_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: true
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -95,12 +221,117 @@ export type Database = {
         }
         Relationships: []
       }
+      sale_items: {
+        Row: {
+          color: string | null
+          id: string
+          item_name: string
+          line_total: number | null
+          quantity: number
+          sale_id: string
+          size: string | null
+          unit_price: number
+          variant_id: string | null
+        }
+        Insert: {
+          color?: string | null
+          id?: string
+          item_name: string
+          line_total?: number | null
+          quantity: number
+          sale_id: string
+          size?: string | null
+          unit_price: number
+          variant_id?: string | null
+        }
+        Update: {
+          color?: string | null
+          id?: string
+          item_name?: string
+          line_total?: number | null
+          quantity?: number
+          sale_id?: string
+          size?: string | null
+          unit_price?: number
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sale_items_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_items_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "stock_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales: {
+        Row: {
+          amount_paid: number
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          customer_name: string | null
+          id: string
+          notes: string | null
+          payment_method: string
+          payment_status: string
+          sold_at: string
+          source: string
+          total: number
+        }
+        Insert: {
+          amount_paid: number
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string
+          payment_status: string
+          sold_at?: string
+          source?: string
+          total: number
+        }
+        Update: {
+          amount_paid?: number
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string
+          payment_status?: string
+          sold_at?: string
+          source?: string
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_items: {
         Row: {
           category_id: string | null
           created_at: string
           created_by: string | null
           id: string
+          image_url: string | null
           issued: number
           min_quantity: number
           name: string
@@ -116,6 +347,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          image_url?: string | null
           issued?: number
           min_quantity?: number
           name: string
@@ -131,6 +363,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          image_url?: string | null
           issued?: number
           min_quantity?: number
           name?: string
@@ -162,6 +395,8 @@ export type Database = {
           performed_by: string | null
           previous_quantity: number
           quantity: number
+          sale_id: string | null
+          variant_id: string
         }
         Insert: {
           created_at?: string
@@ -173,6 +408,8 @@ export type Database = {
           performed_by?: string | null
           previous_quantity: number
           quantity: number
+          sale_id?: string | null
+          variant_id: string
         }
         Update: {
           created_at?: string
@@ -184,10 +421,76 @@ export type Database = {
           performed_by?: string | null
           previous_quantity?: number
           quantity?: number
+          sale_id?: string | null
+          variant_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "stock_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "stock_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "stock_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_variants: {
+        Row: {
+          color: string | null
+          cost_price: number | null
+          created_at: string
+          default_price: number | null
+          id: string
+          item_id: string
+          quantity: number
+          size: string | null
+          sold: number
+          total_added: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          cost_price?: number | null
+          created_at?: string
+          default_price?: number | null
+          id?: string
+          item_id: string
+          quantity?: number
+          size?: string | null
+          sold?: number
+          total_added?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          cost_price?: number | null
+          created_at?: string
+          default_price?: number | null
+          id?: string
+          item_id?: string
+          quantity?: number
+          size?: string | null
+          sold?: number
+          total_added?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_variants_item_id_fkey"
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "stock_items"
@@ -198,94 +501,87 @@ export type Database = {
       temp_stock_checkouts: {
         Row: {
           closed_date: string | null
+          color: string | null
           created_at: string
+          customer_id: string | null
           customer_name: string
           customer_phone: string | null
           deposit: number | null
           expected_return_date: string | null
           id: string
-          item_id: string
+          item_name: string
           notes: string | null
           quantity: number
+          sale_id: string | null
+          size: string | null
           status: string
           taken_date: string
           updated_at: string
+          variant_id: string | null
         }
         Insert: {
           closed_date?: string | null
+          color?: string | null
           created_at?: string
+          customer_id?: string | null
           customer_name: string
           customer_phone?: string | null
           deposit?: number | null
           expected_return_date?: string | null
           id?: string
-          item_id: string
+          item_name: string
           notes?: string | null
           quantity?: number
+          sale_id?: string | null
+          size?: string | null
           status?: string
           taken_date?: string
           updated_at?: string
+          variant_id?: string | null
         }
         Update: {
           closed_date?: string | null
+          color?: string | null
           created_at?: string
+          customer_id?: string | null
           customer_name?: string
           customer_phone?: string | null
           deposit?: number | null
           expected_return_date?: string | null
           id?: string
-          item_id?: string
+          item_name?: string
           notes?: string | null
           quantity?: number
+          sale_id?: string | null
+          size?: string | null
           status?: string
           taken_date?: string
           updated_at?: string
+          variant_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "temp_stock_checkouts_item_id_fkey"
-            columns: ["item_id"]
+            foreignKeyName: "temp_stock_checkouts_customer_id_fkey"
+            columns: ["customer_id"]
             isOneToOne: false
-            referencedRelation: "temp_stock_items"
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "temp_stock_checkouts_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "temp_stock_checkouts_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "stock_variants"
             referencedColumns: ["id"]
           },
         ]
-      }
-      temp_stock_items: {
-        Row: {
-          available_quantity: number
-          color: string | null
-          created_at: string
-          description: string | null
-          id: string
-          name: string
-          size: string | null
-          total_quantity: number
-          updated_at: string
-        }
-        Insert: {
-          available_quantity?: number
-          color?: string | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          name: string
-          size?: string | null
-          total_quantity?: number
-          updated_at?: string
-        }
-        Update: {
-          available_quantity?: number
-          color?: string | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          name?: string
-          size?: string | null
-          total_quantity?: number
-          updated_at?: string
-        }
-        Relationships: []
       }
       user_roles: {
         Row: {
@@ -310,10 +606,117 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      debt_balances: {
+        Row: {
+          amount: number | null
+          balance: number | null
+          created_at: string | null
+          customer_id: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          due_date: string | null
+          id: string | null
+          notes: string | null
+          paid: number | null
+          sale_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debts_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: true
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
-      [_ in never]: never
+      add_stock_variant: {
+        Args: {
+          p_color: string
+          p_cost_price?: number
+          p_default_price?: number
+          p_item_id: string
+          p_quantity: number
+          p_size: string
+        }
+        Returns: string
+      }
+      check_out_temp: {
+        Args: {
+          p_customer_id?: string
+          p_customer_name?: string
+          p_customer_phone?: string
+          p_deposit?: number
+          p_expected_return_date?: string
+          p_notes?: string
+          p_quantity: number
+          p_taken_date?: string
+          p_variant_id: string
+        }
+        Returns: string
+      }
+      close_temp_checkout: {
+        Args: {
+          p_amount_paid?: number
+          p_checkout_id: string
+          p_due_date?: string
+          p_outcome: string
+          p_payment_method?: string
+          p_unit_price?: number
+        }
+        Returns: string
+      }
+      create_stock_item: {
+        Args: {
+          p_category_id: string
+          p_image_url?: string
+          p_min_quantity: number
+          p_name: string
+          p_notes?: string
+          p_variants: Json
+        }
+        Returns: string
+      }
+      delete_temp_checkout: {
+        Args: { p_checkout_id: string }
+        Returns: undefined
+      }
+      record_debt_payment: {
+        Args: {
+          p_amount: number
+          p_debt_id: string
+          p_method?: string
+          p_note?: string
+        }
+        Returns: number
+      }
+      record_sale: {
+        Args: {
+          p_amount_paid?: number
+          p_customer_id?: string
+          p_customer_name?: string
+          p_customer_phone?: string
+          p_due_date?: string
+          p_lines: Json
+          p_notes?: string
+          p_payment_method?: string
+          p_source?: string
+        }
+        Returns: string
+      }
+      restock_variant: {
+        Args: { p_notes?: string; p_quantity: number; p_variant_id: string }
+        Returns: number
+      }
     }
     Enums: {
       app_role: "admin" | "storekeeper" | "owner"

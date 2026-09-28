@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
-import { Package, ArrowRightLeft, RefreshCw, Plus, Minus } from 'lucide-react';
+import { Package, ArrowRightLeft, RefreshCw, Plus, Minus, Timer, Undo2 } from 'lucide-react';
 import type { MovementType } from '@/lib/types';
 
 interface Movement {
@@ -22,8 +22,10 @@ interface RecentActivityProps {
 const movementConfig: Record<MovementType, { label: string; icon: typeof Package; color: string }> = {
   added: { label: 'Added', icon: Plus, color: 'bg-success/10 text-success' },
   issued: { label: 'Sold', icon: Minus, color: 'bg-warning/10 text-warning' },
-  returned: { label: 'Returned', icon: RefreshCw, color: 'bg-primary/10 text-primary' },
+  returned: { label: 'Restocked', icon: RefreshCw, color: 'bg-primary/10 text-primary' },
   adjusted: { label: 'Adjusted', icon: ArrowRightLeft, color: 'bg-muted text-muted-foreground' },
+  loaned: { label: 'Out on approval', icon: Timer, color: 'bg-blue-500/10 text-blue-500' },
+  loan_returned: { label: 'Back from customer', icon: Undo2, color: 'bg-success/10 text-success' },
 };
 
 export function RecentActivity({ movements, isLoading }: RecentActivityProps) {

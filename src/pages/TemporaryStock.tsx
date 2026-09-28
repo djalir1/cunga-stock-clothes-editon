@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { FEATURES } from '@/config/features';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTemporaryStock, TempStockItem, TempStockCheckout, CheckoutStatus } from '@/hooks/useTemporaryStock';
+import { useTemporaryStock, TempStockCheckout, CheckoutStatus } from '@/hooks/useTemporaryStock';
+import { useStockItems } from '@/hooks/useStockItems';
+import { formatRWF, optionLabel } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -62,26 +65,30 @@ function TemporaryStockContent() {
   const today = new Date().toISOString().slice(0, 10);
 
   const {
-    items, checkouts, openCheckouts, closedCheckouts, overdueCheckouts, isLoading,
-    addItem, deleteItem, checkOut, closeCheckout, deleteCheckout,
+    checkouts, openCheckouts, closedCheckouts, overdueCheckouts, isLoading,
+    checkOut, closeCheckout, deleteCheckout,
   } = useTemporaryStock();
-
-  // --- Add Item dialog ---
-  const emptyItemForm = { name: '', description: '', size: '', color: '', total_quantity: '1' };
-  const [isAddItemOpen, setIsAddItemOpen] = useState(false);
-  const [itemForm, setItemForm] = useState(emptyItemForm);
+  const { items } = useStockItems();
 
   // --- Check-out dialog ---
   const emptyCheckoutForm = {
-    customer_name: '', customer_phone: '', quantity: '1', deposit: '',
+    item_id: '', variant_id: '', customer_name: '', customer_phone: '', quantity: '1', deposit: '',
     taken_date: today, expected_return_date: '', notes: '',
   };
-  const [checkoutItem, setCheckoutItem] = useState<TempStockItem | null>(null);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [checkoutForm, setCheckoutForm] = useState(emptyCheckoutForm);
+  const availableItems = items.filter(i => i.quantity > 0);
+  const checkoutItem = items.find(i => i.id === checkoutForm.item_id);
+  const checkoutVariant = checkoutItem?.variants.find(v => v.id === checkoutForm.variant_id);
 
-  // --- Confirm dialogs ---
-  const [closeConfirm, setCloseConfirm] = useState<{ id: string; outcome: 'returned' | 'sold' } | null>(null);
-  const [deleteItemConfirmId, setDeleteItemConfirmId] = useState<string | null>(null);
+  // --- Returned / Sold ---
+  const [returnConfirmId, setReturnConfirmId] = useState<string | null>(null);
+  const [selling, setSelling] = useState<TempStockCheckout | null>(null);
+  const [sellForm, setSellForm] = useState({ unitPrice: '', amountPaid: '', dueDate: '' });
+  const sellTotal = selling && sellForm.unitPrice !== '' ? selling.quantity * Number(sellForm.unitPrice) : null;
+  const sellPaid = sellForm.amountPaid === '' ? sellTotal : Number(sellForm.amountPaid);
+  const sellOwes = sellTotal !== null && sellPaid !== null ? sellTotal - sellPaid : 0;
+
   const [deleteCheckoutConfirmId, setDeleteCheckoutConfirmId] = useState<string | null>(null);
 
   // --- Reports ---
@@ -101,31 +108,24 @@ function TemporaryStockContent() {
     c.expected_return_date && c.expected_return_date < today;
 
   const fmtDate = (d: string | null) => d ? format(new Date(d), 'dd MMM yyyy') : '—';
-  const fmtMoney = (n: number | null) => n === null ? '—' : `RWF ${n.toLocaleString()}`;
   const variant = (size: string | null, color: string | null) => [size, color].filter(Boolean).join(' · ') || '—';
+  const piecesOut = openCheckouts.reduce((sum, c) => sum + c.quantity, 0);
 
-  const openCheckout = (item: TempStockItem) => {
-    setCheckoutItem(item);
+  const openCheckoutDialog = () => {
     setCheckoutForm(emptyCheckoutForm);
+    setIsCheckoutOpen(true);
   };
 
-  const handleAddItem = async () => {
-    if (!itemForm.name.trim()) return;
-    await addItem.mutateAsync({
-      name: itemForm.name,
-      description: itemForm.description || undefined,
-      size: itemForm.size || undefined,
-      color: itemForm.color || undefined,
-      total_quantity: Number(itemForm.total_quantity) || 1,
-    });
-    setItemForm(emptyItemForm);
-    setIsAddItemOpen(false);
+  const pickItem = (itemId: string) => {
+    const item = items.find(i => i.id === itemId);
+    const inStock = item?.variants.filter(v => v.quantity > 0) ?? [];
+    setCheckoutForm({ ...checkoutForm, item_id: itemId, variant_id: inStock.length === 1 ? inStock[0].id : '' });
   };
 
   const handleCheckout = async () => {
-    if (!checkoutItem || !checkoutForm.customer_name.trim()) return;
+    if (!checkoutForm.variant_id || !checkoutForm.customer_name.trim()) return;
     await checkOut.mutateAsync({
-      item_id: checkoutItem.id,
+      variant_id: checkoutForm.variant_id,
       customer_name: checkoutForm.customer_name,
       customer_phone: checkoutForm.customer_phone || undefined,
       quantity: Number(checkoutForm.quantity) || 1,
@@ -134,14 +134,31 @@ function TemporaryStockContent() {
       expected_return_date: checkoutForm.expected_return_date || undefined,
       notes: checkoutForm.notes || undefined,
     });
-    setCheckoutItem(null);
+    setIsCheckoutOpen(false);
+  };
+
+  const openSell = (c: TempStockCheckout) => {
+    setSelling(c);
+    setSellForm({ unitPrice: '', amountPaid: '', dueDate: '' });
+  };
+
+  const handleSell = async () => {
+    if (!selling || sellTotal === null) return;
+    await closeCheckout.mutateAsync({
+      id: selling.id,
+      outcome: 'sold',
+      unitPrice: Number(sellForm.unitPrice),
+      amountPaid: sellPaid ?? undefined,
+      dueDate: sellForm.dueDate || undefined,
+    });
+    setSelling(null);
   };
 
   // --- CSV export ---
   const exportCSV = () => {
     let csv = 'Customer,Phone,Item,Size/Colour,Qty,Deposit (RWF),Taken Date,Expected Return,Closed Date,Status,Notes\n';
     reportRows.forEach(c => {
-      csv += `"${c.customer_name}","${c.customer_phone || ''}","${c.item_name}","${variant(c.item_size, c.item_color)}",${c.quantity},${c.deposit ?? ''},${fmtDate(c.taken_date)},${fmtDate(c.expected_return_date)},${fmtDate(c.closed_date)},${statusLabel[c.status]},"${c.notes || ''}"\n`;
+      csv += `"${c.customer_name}","${c.customer_phone || ''}","${c.item_name}","${variant(c.size, c.color)}",${c.quantity},${c.deposit ?? ''},${fmtDate(c.taken_date)},${fmtDate(c.expected_return_date)},${fmtDate(c.closed_date)},${statusLabel[c.status]},"${c.notes || ''}"\n`;
     });
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -191,9 +208,9 @@ function TemporaryStockContent() {
       c.customer_name,
       c.customer_phone || '—',
       c.item_name,
-      variant(c.item_size, c.item_color),
+      variant(c.size, c.color),
       c.quantity.toString(),
-      c.deposit === null ? '—' : c.deposit.toLocaleString(),
+      c.deposit === null ? '—' : formatRWF(c.deposit),
       fmtDate(c.taken_date),
       fmtDate(c.expected_return_date),
       fmtDate(c.closed_date),
@@ -234,6 +251,13 @@ function TemporaryStockContent() {
     </div>
   );
 
+  const itemCell = (c: TempStockCheckout) => (
+    <>
+      <div>{c.item_name}</div>
+      <div className="text-xs text-muted-foreground">{variant(c.size, c.color)}</div>
+    </>
+  );
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -250,8 +274,8 @@ function TemporaryStockContent() {
           </div>
         </div>
         {isKeeper && (
-          <Button className="gap-2" onClick={() => setIsAddItemOpen(true)}>
-            <Plus className="w-4 h-4" /> Add Item
+          <Button className="gap-2" onClick={openCheckoutDialog}>
+            <Plus className="w-4 h-4" /> Check Out Item
           </Button>
         )}
       </div>
@@ -262,7 +286,7 @@ function TemporaryStockContent() {
           <CardContent className="pt-5">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-lg"><Package className="w-5 h-5 text-primary" /></div>
-              <div><p className="text-2xl font-bold">{items.length}</p><p className="text-xs text-muted-foreground">Items in Stock</p></div>
+              <div><p className="text-2xl font-bold">{piecesOut}</p><p className="text-xs text-muted-foreground">Pieces Out</p></div>
             </div>
           </CardContent>
         </Card>
@@ -284,90 +308,12 @@ function TemporaryStockContent() {
         </Card>
       </div>
 
-      <Tabs defaultValue="inventory">
-        <TabsList className="grid w-full max-w-lg grid-cols-4">
-          <TabsTrigger value="inventory">Inventory</TabsTrigger>
+      <Tabs defaultValue="active">
+        <TabsList className="grid w-full max-w-md grid-cols-3">
           <TabsTrigger value="active">Out ({openCheckouts.length})</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
         </TabsList>
-
-        {/* ── INVENTORY TAB ── */}
-        <TabsContent value="inventory" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Temporary Items</CardTitle>
-              <CardDescription>Garments customers can take on approval or reserve</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex justify-center py-8"><RefreshCcw className="w-6 h-6 animate-spin text-primary" /></div>
-              ) : items.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Package className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                  <p>No items yet. {isKeeper && 'Click "Add Item" to get started.'}</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item Name</TableHead>
-                      <TableHead>Size</TableHead>
-                      <TableHead>Colour</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-center">Total</TableHead>
-                      <TableHead className="text-center">Available</TableHead>
-                      <TableHead className="text-center">Out</TableHead>
-                      {isKeeper && <TableHead className="text-right">Actions</TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {items.map(item => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">{item.name}</TableCell>
-                        <TableCell>{item.size || '—'}</TableCell>
-                        <TableCell>{item.color || '—'}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm">{item.description || '—'}</TableCell>
-                        <TableCell className="text-center font-mono">{item.total_quantity}</TableCell>
-                        <TableCell className="text-center font-mono">
-                          <span className={item.available_quantity === 0 ? 'text-destructive font-semibold' : 'text-green-600 font-semibold'}>
-                            {item.available_quantity}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-center font-mono text-rose-600">
-                          {item.total_quantity - item.available_quantity}
-                        </TableCell>
-                        {isKeeper && (
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-1">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="gap-1"
-                                onClick={() => openCheckout(item)}
-                                disabled={item.available_quantity === 0}
-                              >
-                                <User className="w-3.5 h-3.5" /> Check Out
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="text-destructive hover:bg-destructive/10"
-                                onClick={() => setDeleteItemConfirmId(item.id)}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         {/* ── OUT WITH CUSTOMERS TAB ── */}
         <TabsContent value="active" className="mt-4">
@@ -377,7 +323,9 @@ function TemporaryStockContent() {
               <CardDescription>Garments currently taken on approval or reserved</CardDescription>
             </CardHeader>
             <CardContent>
-              {openCheckouts.length === 0 ? (
+              {isLoading ? (
+                <div className="flex justify-center py-8"><RefreshCcw className="w-6 h-6 animate-spin text-primary" /></div>
+              ) : openCheckouts.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <CheckCircle2 className="w-10 h-10 mx-auto mb-3 opacity-30" />
                   <p>Nothing is out with customers right now.</p>
@@ -400,12 +348,9 @@ function TemporaryStockContent() {
                     {openCheckouts.map(c => (
                       <TableRow key={c.id} className={isOverdue(c) ? 'bg-amber-500/5' : ''}>
                         <TableCell>{customerCell(c)}</TableCell>
-                        <TableCell>
-                          <div>{c.item_name}</div>
-                          <div className="text-xs text-muted-foreground">{variant(c.item_size, c.item_color)}</div>
-                        </TableCell>
+                        <TableCell>{itemCell(c)}</TableCell>
                         <TableCell className="text-center font-mono">{c.quantity}</TableCell>
-                        <TableCell className="text-sm">{fmtMoney(c.deposit)}</TableCell>
+                        <TableCell className="text-sm">{formatRWF(c.deposit)}</TableCell>
                         <TableCell className="text-sm">{fmtDate(c.taken_date)}</TableCell>
                         <TableCell>
                           {c.expected_return_date ? (
@@ -428,14 +373,16 @@ function TemporaryStockContent() {
                               <Button
                                 size="sm" variant="outline"
                                 className="gap-1 text-green-600 border-green-600/30 hover:bg-green-600/10"
-                                onClick={() => setCloseConfirm({ id: c.id, outcome: 'returned' })}
+                                onClick={() => setReturnConfirmId(c.id)}
+                                disabled={!c.variant_id}
                               >
                                 <Undo2 className="w-3.5 h-3.5" /> Returned
                               </Button>
                               <Button
                                 size="sm" variant="outline"
                                 className="gap-1 text-primary border-primary/30 hover:bg-primary/10"
-                                onClick={() => setCloseConfirm({ id: c.id, outcome: 'sold' })}
+                                onClick={() => openSell(c)}
+                                disabled={!c.variant_id}
                               >
                                 <ShoppingBag className="w-3.5 h-3.5" /> Sold
                               </Button>
@@ -485,10 +432,7 @@ function TemporaryStockContent() {
                     {closedCheckouts.map(c => (
                       <TableRow key={c.id}>
                         <TableCell>{customerCell(c)}</TableCell>
-                        <TableCell>
-                          <div>{c.item_name}</div>
-                          <div className="text-xs text-muted-foreground">{variant(c.item_size, c.item_color)}</div>
-                        </TableCell>
+                        <TableCell>{itemCell(c)}</TableCell>
                         <TableCell className="text-center font-mono">{c.quantity}</TableCell>
                         <TableCell className="text-sm">{fmtDate(c.taken_date)}</TableCell>
                         <TableCell className="text-sm font-medium">{fmtDate(c.closed_date)}</TableCell>
@@ -578,12 +522,9 @@ function TemporaryStockContent() {
                       {reportRows.map(c => (
                         <TableRow key={c.id}>
                           <TableCell>{customerCell(c)}</TableCell>
-                          <TableCell>
-                            <div>{c.item_name}</div>
-                            <div className="text-xs text-muted-foreground">{variant(c.item_size, c.item_color)}</div>
-                          </TableCell>
+                          <TableCell>{itemCell(c)}</TableCell>
                           <TableCell className="text-center font-mono">{c.quantity}</TableCell>
-                          <TableCell className="text-sm">{fmtMoney(c.deposit)}</TableCell>
+                          <TableCell className="text-sm">{formatRWF(c.deposit)}</TableCell>
                           <TableCell className="text-sm">{fmtDate(c.taken_date)}</TableCell>
                           <TableCell className="text-sm">{fmtDate(c.closed_date)}</TableCell>
                           <TableCell><StatusBadge status={c.status} /></TableCell>
@@ -599,58 +540,38 @@ function TemporaryStockContent() {
         </TabsContent>
       </Tabs>
 
-      {/* ── Add Item Dialog ── */}
-      <Dialog open={isAddItemOpen} onOpenChange={setIsAddItemOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Add Item to Temporary Stock</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-2">
-            <div className="space-y-2 col-span-2">
-              <Label>Item Name <span className="text-destructive">*</span></Label>
-              <Input placeholder="e.g. Evening Dress, Suit, Leather Jacket" value={itemForm.name}
-                onChange={e => setItemForm({ ...itemForm, name: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Size</Label>
-              <Input placeholder="e.g. M, 42, 10" value={itemForm.size}
-                onChange={e => setItemForm({ ...itemForm, size: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Colour</Label>
-              <Input placeholder="e.g. Black" value={itemForm.color}
-                onChange={e => setItemForm({ ...itemForm, color: e.target.value })} />
-            </div>
-            <div className="space-y-2 col-span-2">
-              <Label>Description (optional)</Label>
-              <Input placeholder="e.g. Silk, slim fit" value={itemForm.description}
-                onChange={e => setItemForm({ ...itemForm, description: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Total Quantity</Label>
-              <Input type="number" min="1" value={itemForm.total_quantity}
-                onChange={e => setItemForm({ ...itemForm, total_quantity: e.target.value })} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setItemForm(emptyItemForm); setIsAddItemOpen(false); }}>Cancel</Button>
-            <Button onClick={handleAddItem} disabled={!itemForm.name.trim() || addItem.isPending}>Add Item</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* ── Check Out Dialog ── */}
-      <Dialog open={!!checkoutItem} onOpenChange={v => !v && setCheckoutItem(null)}>
+      <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
             <DialogTitle>Check Out to Customer</DialogTitle>
-            {checkoutItem && (
-              <p className="text-sm text-muted-foreground mt-1">
-                <span className="font-medium text-foreground">{checkoutItem.name}</span>
-                {(checkoutItem.size || checkoutItem.color) && <>&nbsp;·&nbsp;{variant(checkoutItem.size, checkoutItem.color)}</>}
-                &nbsp;·&nbsp;{checkoutItem.available_quantity} available
-              </p>
-            )}
+            <p className="text-sm text-muted-foreground mt-1">The pieces leave the shelf until they are returned or sold.</p>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-2">
+            <div className="space-y-2 col-span-2">
+              <Label>Item <span className="text-destructive">*</span></Label>
+              <Select value={checkoutForm.item_id} onValueChange={pickItem}>
+                <SelectTrigger><SelectValue placeholder={availableItems.length ? 'Choose an item' : 'No items in stock'} /></SelectTrigger>
+                <SelectContent>
+                  {availableItems.map(i => <SelectItem key={i.id} value={i.id}>{i.name} — {i.quantity} in stock</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            {checkoutItem && (checkoutItem.variants.length > 1 || checkoutItem.variants.some(v => v.size || v.color)) && (
+              <div className="space-y-2 col-span-2">
+                <Label>Size / Colour <span className="text-destructive">*</span></Label>
+                <Select value={checkoutForm.variant_id} onValueChange={v => setCheckoutForm({ ...checkoutForm, variant_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="Choose size / colour" /></SelectTrigger>
+                  <SelectContent>
+                    {checkoutItem.variants.map(v => (
+                      <SelectItem key={v.id} value={v.id} disabled={v.quantity <= 0}>
+                        {optionLabel(v.size, v.color)} — {v.quantity} left
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-2 col-span-2">
               <Label>Customer Name <span className="text-destructive">*</span></Label>
               <Input placeholder="e.g. Jane Doe" value={checkoutForm.customer_name}
@@ -663,7 +584,7 @@ function TemporaryStockContent() {
             </div>
             <div className="space-y-2">
               <Label>Quantity</Label>
-              <Input type="number" min="1" max={checkoutItem?.available_quantity}
+              <Input type="number" min="1" max={checkoutVariant?.quantity}
                 value={checkoutForm.quantity}
                 onChange={e => setCheckoutForm({ ...checkoutForm, quantity: e.target.value })} />
             </div>
@@ -689,49 +610,84 @@ function TemporaryStockContent() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCheckoutItem(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setIsCheckoutOpen(false)}>Cancel</Button>
             <Button onClick={handleCheckout}
-              disabled={!checkoutForm.customer_name.trim() || !checkoutForm.taken_date || checkOut.isPending}>
+              disabled={!checkoutForm.variant_id || !checkoutForm.customer_name.trim() || !checkoutForm.taken_date || checkOut.isPending}>
               Confirm Check Out
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ── Returned / Sold Confirm ── */}
-      <AlertDialog open={!!closeConfirm} onOpenChange={() => setCloseConfirm(null)}>
+      {/* ── Sold Dialog ── */}
+      <Dialog open={!!selling} onOpenChange={v => !v && setSelling(null)}>
+        <DialogContent className="sm:max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle>Mark as Sold</DialogTitle>
+            {selling && (
+              <p className="text-sm text-muted-foreground mt-1">
+                <span className="font-medium text-foreground">{selling.customer_name}</span> kept {selling.quantity} ×{' '}
+                {selling.item_name} ({variant(selling.size, selling.color)})
+              </p>
+            )}
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-2">
+            <div className="space-y-2">
+              <Label>Price per piece (RWF) <span className="text-destructive">*</span></Label>
+              <Input type="number" min="0" placeholder="Agreed price" value={sellForm.unitPrice}
+                onChange={e => setSellForm({ ...sellForm, unitPrice: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Amount Paid (RWF)</Label>
+              <Input type="number" min="0" placeholder={sellTotal !== null ? `Full: ${sellTotal.toLocaleString('en-US')}` : ''}
+                value={sellForm.amountPaid}
+                onChange={e => setSellForm({ ...sellForm, amountPaid: e.target.value })} />
+            </div>
+            {selling?.deposit ? (
+              <p className="col-span-2 text-xs text-muted-foreground">
+                Deposit already taken: {formatRWF(selling.deposit)} — include it in the amount paid.
+              </p>
+            ) : null}
+            {sellOwes > 0 && (
+              <div className="space-y-2 col-span-2">
+                <Label>Balance Due Date</Label>
+                <Input type="date" value={sellForm.dueDate} onChange={e => setSellForm({ ...sellForm, dueDate: e.target.value })} />
+              </div>
+            )}
+            {sellTotal !== null && (
+              <div className="col-span-2 rounded-lg bg-muted/50 px-3 py-2 space-y-1 text-sm">
+                <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-semibold">{formatRWF(sellTotal)}</span></div>
+                {sellOwes > 0 && (
+                  <div className="flex justify-between text-amber-600"><span>Still owes (added to debts)</span><span className="font-semibold">{formatRWF(sellOwes)}</span></div>
+                )}
+              </div>
+            )}
+            {sellOwes < 0 && <p className="col-span-2 text-sm text-destructive">Amount paid can't be more than the total.</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelling(null)}>Cancel</Button>
+            <Button onClick={handleSell} disabled={sellTotal === null || sellOwes < 0 || closeCheckout.isPending}>
+              Confirm Sale
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Returned Confirm ── */}
+      <AlertDialog open={!!returnConfirmId} onOpenChange={() => setReturnConfirmId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{closeConfirm?.outcome === 'sold' ? 'Mark as Sold?' : 'Mark as Returned?'}</AlertDialogTitle>
+            <AlertDialogTitle>Mark as Returned?</AlertDialogTitle>
             <AlertDialogDescription>
-              {closeConfirm?.outcome === 'sold'
-                ? "Today's date will be recorded and the pieces will be removed from temporary stock as bought by the customer."
-                : "Today's date will be recorded as the return date and the pieces will be added back to available stock."}
+              Today's date will be recorded as the return date and the pieces go back into stock.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className={closeConfirm?.outcome === 'sold' ? '' : 'bg-green-600 hover:bg-green-700'}
-              onClick={() => { if (closeConfirm) closeCheckout.mutate(closeConfirm); setCloseConfirm(null); }}>
-              {closeConfirm?.outcome === 'sold' ? 'Confirm Sale' : 'Confirm Return'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* ── Delete Item Confirm ── */}
-      <AlertDialog open={!!deleteItemConfirmId} onOpenChange={() => setDeleteItemConfirmId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete item?</AlertDialogTitle>
-            <AlertDialogDescription>This will permanently delete the item and all its customer records. Cannot be undone.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive hover:bg-destructive/90"
-              onClick={() => { if (deleteItemConfirmId) deleteItem.mutate(deleteItemConfirmId); setDeleteItemConfirmId(null); }}>
-              Delete
+              className="bg-green-600 hover:bg-green-700"
+              onClick={() => { if (returnConfirmId) closeCheckout.mutate({ id: returnConfirmId, outcome: 'returned' }); setReturnConfirmId(null); }}>
+              Confirm Return
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -742,7 +698,7 @@ function TemporaryStockContent() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete record?</AlertDialogTitle>
-            <AlertDialogDescription>This will permanently remove the customer record. If the item is still out, the quantity will be restored.</AlertDialogDescription>
+            <AlertDialogDescription>This will permanently remove the customer record. If the item is still out, it goes back into stock.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>

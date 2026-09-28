@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useStockItems } from '@/hooks/useStockItems';
 import { useStockMovements } from '@/hooks/useStockMovements';
+import { MOVEMENT_LABELS } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -63,9 +64,9 @@ export default function Notifications() {
     movements.slice(0, 5).forEach(movement => {
       notifications.push({
         id: `movement-${movement.id}`,
-        type: (movement.movement_type === 'added' || movement.movement_type === 'returned') ? 'success' : 'info',
-        title: `Stock ${String(movement.movement_type).charAt(0).toUpperCase() + String(movement.movement_type).slice(1)}`,
-        message: `${movement.item_name || 'Unknown item'}: ${movement.quantity} units ${movement.movement_type}`,
+        type: ['added', 'returned', 'loan_returned'].includes(movement.movement_type) ? 'success' : 'info',
+        title: MOVEMENT_LABELS[movement.movement_type] ?? movement.movement_type,
+        message: `${movement.item_name || 'Unknown item'}: ${Math.abs(movement.quantity)} ${Math.abs(movement.quantity) === 1 ? 'piece' : 'pieces'}`,
         timestamp: new Date(movement.created_at),
         read: true,
       });

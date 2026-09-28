@@ -41,6 +41,8 @@ export default function History() {
       case 'issued': return <TrendingDown className="w-4 h-4 text-destructive" />;
       case 'returned': return <Plus className="w-4 h-4 text-primary" />; // ← Updated icon
       case 'adjusted': return <Settings className="w-4 h-4 text-muted-foreground" />;
+      case 'loaned': return <TrendingDown className="w-4 h-4 text-blue-500" />;
+      case 'loan_returned': return <TrendingUp className="w-4 h-4 text-success" />;
       default: return <Package className="w-4 h-4" />;
     }
   };
@@ -49,8 +51,10 @@ export default function History() {
     switch (type) {
       case 'added': return <Badge className="bg-success/20 text-success border-0">Added</Badge>;
       case 'issued': return <Badge className="bg-destructive/20 text-destructive border-0">Sold</Badge>;
-      case 'returned': return <Badge className="bg-primary/20 text-primary border-0">Returned</Badge>;
+      case 'returned': return <Badge className="bg-primary/20 text-primary border-0">Restocked</Badge>;
       case 'adjusted': return <Badge variant="outline">Adjusted</Badge>;
+      case 'loaned': return <Badge className="bg-blue-500/20 text-blue-500 border-0">Out on approval</Badge>;
+      case 'loan_returned': return <Badge className="bg-success/20 text-success border-0">Back from customer</Badge>;
       default: return <Badge variant="outline">{type}</Badge>;
     }
   };
@@ -103,7 +107,9 @@ export default function History() {
                     <SelectItem value="all">All Types</SelectItem>
                     <SelectItem value="added">Added</SelectItem>
                     <SelectItem value="issued">Sold</SelectItem>
-                    <SelectItem value="returned">Returned</SelectItem>
+                    <SelectItem value="returned">Restocked</SelectItem>
+                    <SelectItem value="loaned">Out on approval</SelectItem>
+                    <SelectItem value="loan_returned">Back from customer</SelectItem>
                     <SelectItem value="adjusted">Adjusted</SelectItem>
                   </SelectContent>
                 </Select>
