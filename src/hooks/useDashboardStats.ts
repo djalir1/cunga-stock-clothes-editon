@@ -89,7 +89,7 @@ export function useDashboardStats() {
       // Recently added (last 5)
       const recentlyAdded = typedItems.slice(0, 5);
 
-      // Recently issued
+      // Recently sold
       const recentlyIssued = (movements as StockMovement[])
         .filter((m) => m.movement_type === 'issued')
         .slice(0, 5);

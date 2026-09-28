@@ -178,7 +178,7 @@ export function useStockItems() {
         quantity: -quantity,
         previous_quantity: current.quantity,
         new_quantity: newQuantity,
-        notes: recipient ? `Issued to: ${recipient}` : (notes || null),
+        notes: recipient ? `Sold to: ${recipient}` : (notes || null),
         performed_by: user?.id || null,
       });
 
@@ -190,10 +190,10 @@ export function useStockItems() {
       queryClient.invalidateQueries({ queryKey: ['stock-items'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
-      toast({ title: 'Success', description: 'Item issued successfully.' });
+      toast({ title: 'Success', description: 'Sale recorded successfully.' });
     },
     onError: (error) => {
-      toast({ title: 'Error', description: error.message || 'Failed to issue item.', variant: 'destructive' });
+      toast({ title: 'Error', description: error.message || 'Failed to record sale.', variant: 'destructive' });
     },
   });
 
@@ -209,9 +209,7 @@ export function useStockItems() {
       if (!current) throw new Error('Item not found');
 
       const newQuantity = current.quantity + quantity;
-      // ────────────────────────────────────────────────
-      // IMPORTANT CHANGE: issued is NOT decreased anymore
-      // It stays exactly the same value as before
+      // Restocking never decreases the sold count
       const newIssued = current.issued || 0;
 
       const newTotalAdded = (current.total_added || 0) + quantity;
@@ -246,7 +244,7 @@ export function useStockItems() {
       queryClient.invalidateQueries({ queryKey: ['stock-items'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
-      toast({ title: 'Success', description: 'Item returned / restocked successfully.' });
+      toast({ title: 'Success', description: 'Item restocked successfully.' });
     },
     onError: (error) => {
       toast({ title: 'Error', description: error.message || 'Failed to restock item.', variant: 'destructive' });

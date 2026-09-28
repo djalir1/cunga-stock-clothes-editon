@@ -31,7 +31,7 @@ export default function Reports() {
   const { categories } = useCategories();
   
   const getRecipient = (notes: string | null) =>
-    notes?.startsWith('Issued to: ') ? notes.split('\n')[0].replace('Issued to: ', '') : null;
+    notes?.startsWith('Sold to: ') ? notes.split('\n')[0].replace('Sold to: ', '') : null;
 
   const [reportType, setReportType] = useState<string>('full');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -88,16 +88,16 @@ export default function Reports() {
     let csvContent = '';
     
     if (isMovementReport) {
-      csvContent = 'Date,Time,Item,Type,Quantity,Previous Qty,New Qty,Notes,Issued To\n';
+      csvContent = 'Date,Time,Item,Type,Quantity,Previous Qty,New Qty,Notes,Customer\n';
       filteredMovements.forEach((m) => {
         const date = format(new Date(m.created_at), 'yyyy-MM-dd');
         const time = format(new Date(m.created_at), 'HH:mm:ss');
         const itemName = m.item_name || 'Unknown';
-        csvContent += `${date},${time},"${itemName}",${m.movement_type},${m.quantity},${m.previous_quantity},${m.new_quantity},"${m.notes?.startsWith('Issued to: ') ? '' : (m.notes || '')}","${getRecipient(m.notes) || ''}"\n`;
+        csvContent += `${date},${time},"${itemName}",${m.movement_type},${m.quantity},${m.previous_quantity},${m.new_quantity},"${m.notes?.startsWith('Sold to: ') ? '' : (m.notes || '')}","${getRecipient(m.notes) || ''}"\n`;
       });
     } else {
       // Updated CSV headers + columns for the three quantity fields
-      csvContent = 'Name,Category,Total Added,Remaining,Issued,Status,Date Added,Last Updated\n';
+      csvContent = 'Name,Category,Total Added,Remaining,Sold,Status,Date Added,Last Updated\n';
       (reportData as typeof filteredItems).forEach((item) => {
         const dateAdded = format(new Date(item.created_at), 'yyyy-MM-dd HH:mm');
         const lastUpdated = format(new Date(item.updated_at), 'yyyy-MM-dd HH:mm');
@@ -181,13 +181,13 @@ export default function Reports() {
         m.quantity.toString(),
         m.previous_quantity.toString(),
         m.new_quantity.toString(),
-        m.notes?.startsWith('Issued to: ') ? '' : (m.notes || '–'),
+        m.notes?.startsWith('Sold to: ') ? '' : (m.notes || '–'),
         getRecipient(m.notes) || '–',
       ]);
 
       autoTable(doc, {
         startY,
-        head: [['Date', 'Time', 'Item', 'Type', 'Qty', 'Prev', 'New', 'Notes', 'Issued To']],
+        head: [['Date', 'Time', 'Item', 'Type', 'Qty', 'Prev', 'New', 'Notes', 'Customer']],
         body: tableData,
         theme: 'grid',
         headStyles: { fillColor: navy, textColor: 255, fontStyle: 'bold', fontSize: 8 },
@@ -209,7 +209,7 @@ export default function Reports() {
 
       autoTable(doc, {
         startY,
-        head: [['Name', 'Category', 'Total Added', 'Remaining', 'Issued', 'Status', 'Date Added', 'Last Updated']],
+        head: [['Name', 'Category', 'Total Added', 'Remaining', 'Sold', 'Status', 'Date Added', 'Last Updated']],
         body: tableData,
         theme: 'grid',
         headStyles: { fillColor: navy, textColor: 255, fontStyle: 'bold', fontSize: 8 },
@@ -248,7 +248,7 @@ export default function Reports() {
   const getMovementBadge = (type: string) => {
     switch (type) {
       case 'added': return <Badge className="bg-success/20 text-success border-0"><TrendingUp className="w-3 h-3 mr-1" />Added</Badge>;
-      case 'issued': return <Badge className="bg-destructive/20 text-destructive border-0"><TrendingDown className="w-3 h-3 mr-1" />Issued</Badge>;
+      case 'issued': return <Badge className="bg-destructive/20 text-destructive border-0"><TrendingDown className="w-3 h-3 mr-1" />Sold</Badge>;
       case 'returned': return <Badge className="bg-primary/20 text-primary border-0">Returned</Badge>;
       case 'adjusted': return <Badge variant="outline">Adjusted</Badge>;
       default: return <Badge variant="outline">{type}</Badge>;
@@ -418,7 +418,7 @@ export default function Reports() {
                   <TableHead className="text-center">Prev</TableHead>
                   <TableHead className="text-center">New</TableHead>
                   <TableHead>Notes</TableHead>
-                  <TableHead>Issued To</TableHead>
+                  <TableHead>Customer</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -432,7 +432,7 @@ export default function Reports() {
                     <TableCell className="text-center font-mono text-muted-foreground">{movement.previous_quantity}</TableCell>
                     <TableCell className="text-center font-mono">{movement.new_quantity}</TableCell>
                     <TableCell className="text-muted-foreground max-w-[200px] truncate">
-                      {movement.notes?.startsWith('Issued to: ') ? '—' : (movement.notes || '—')}
+                      {movement.notes?.startsWith('Sold to: ') ? '—' : (movement.notes || '—')}
                     </TableCell>
                     <TableCell className="font-medium">{getRecipient(movement.notes) || '—'}</TableCell>
                   </TableRow>
@@ -447,7 +447,7 @@ export default function Reports() {
                   <TableHead>Category</TableHead>
                   <TableHead className="text-center">Total Added</TableHead>
                   <TableHead className="text-center">Remaining</TableHead>
-                  <TableHead className="text-center">Issued</TableHead>
+                  <TableHead className="text-center">Sold</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Date Added</TableHead>
                   <TableHead>Last Updated</TableHead>

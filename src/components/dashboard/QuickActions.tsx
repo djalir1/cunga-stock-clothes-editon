@@ -12,13 +12,13 @@ export function QuickActions() {
       color: 'bg-primary hover:bg-primary/90 text-primary-foreground',
     },
     {
-      label: 'Issue Stock',
+      label: 'Record Sale',
       icon: ArrowUpRight,
       href: '/stock',
       color: 'bg-warning hover:bg-warning/90 text-warning-foreground',
     },
     {
-      label: 'Return Stock',
+      label: 'Restock',
       icon: ArrowDownLeft,
       href: '/stock',
       color: 'bg-success hover:bg-success/90 text-success-foreground',

@@ -21,7 +21,7 @@ interface RecentActivityProps {
 
 const movementConfig: Record<MovementType, { label: string; icon: typeof Package; color: string }> = {
   added: { label: 'Added', icon: Plus, color: 'bg-success/10 text-success' },
-  issued: { label: 'Issued', icon: Minus, color: 'bg-warning/10 text-warning' },
+  issued: { label: 'Sold', icon: Minus, color: 'bg-warning/10 text-warning' },
   returned: { label: 'Returned', icon: RefreshCw, color: 'bg-primary/10 text-primary' },
   adjusted: { label: 'Adjusted', icon: ArrowRightLeft, color: 'bg-muted text-muted-foreground' },
 };

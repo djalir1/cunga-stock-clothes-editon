@@ -145,7 +145,7 @@ export default function Auth() {
                   <Input
                     id="login-email"
                     type="email"
-                    placeholder="admin@school.edu"
+                    placeholder="admin@yourshop.com"
                     value={loginForm.email}
                     onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
                     className={errors.email ? 'border-destructive' : ''}

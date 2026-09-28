@@ -48,7 +48,7 @@ export default function History() {
   const getMovementBadge = (type: string) => {
     switch (type) {
       case 'added': return <Badge className="bg-success/20 text-success border-0">Added</Badge>;
-      case 'issued': return <Badge className="bg-destructive/20 text-destructive border-0">Issued</Badge>;
+      case 'issued': return <Badge className="bg-destructive/20 text-destructive border-0">Sold</Badge>;
       case 'returned': return <Badge className="bg-primary/20 text-primary border-0">Returned</Badge>;
       case 'adjusted': return <Badge variant="outline">Adjusted</Badge>;
       default: return <Badge variant="outline">{type}</Badge>;
@@ -102,7 +102,7 @@ export default function History() {
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
                     <SelectItem value="added">Added</SelectItem>
-                    <SelectItem value="issued">Issued</SelectItem>
+                    <SelectItem value="issued">Sold</SelectItem>
                     <SelectItem value="returned">Returned</SelectItem>
                     <SelectItem value="adjusted">Adjusted</SelectItem>
                   </SelectContent>
@@ -154,11 +154,11 @@ export default function History() {
                                 {movement.previous_quantity} → {movement.new_quantity}
                               </span>
                             </div>
-                            {movement.notes?.startsWith('Issued to: ') ? (
+                            {movement.notes?.startsWith('Sold to: ') ? (
                               <>
                                 <p className="text-sm bg-blue-500/10 text-blue-400 rounded-md px-3 py-2 mb-2 flex items-center gap-2">
                                   <User className="w-3 h-3 shrink-0" />
-                                  Issued to: <span className="font-semibold text-foreground">{movement.notes.split('\n')[0].replace('Issued to: ', '')}</span>
+                                  Sold to: <span className="font-semibold text-foreground">{movement.notes.split('\n')[0].replace('Sold to: ', '')}</span>
                                 </p>
                                 {movement.notes.split('\n').slice(1).join('\n') && (
                                   <p className="text-sm text-muted-foreground bg-muted/50 rounded-md px-3 py-2 mb-2">

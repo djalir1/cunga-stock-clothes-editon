@@ -16,6 +16,8 @@ export interface StockItem {
   category_id: string | null;
   quantity: number;
   min_quantity: number;
+  total_added: number;
+  issued: number; // units sold
   status: StockStatus;
   person_responsible: string | null;
   notes: string | null;

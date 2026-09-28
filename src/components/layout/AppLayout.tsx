@@ -21,7 +21,6 @@ import {
   Bell,
   Search as SearchIcon,
   X,
-  Shirt,
   Timer,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -32,7 +31,6 @@ const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/stock', label: 'Stock Items', icon: Package },
   { path: '/categories', label: 'Categories', icon: FolderOpen },
-  { path: '/uniform', label: 'Uniform Inventory', icon: Shirt },
   { path: '/temporary-stock', label: 'Temporary Stock', icon: Timer },
   { path: '/movements', label: 'History', icon: History },
   { path: '/reports', label: 'Reports', icon: FileText },

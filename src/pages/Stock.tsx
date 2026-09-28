@@ -110,7 +110,7 @@ export default function Stock() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Stock Inventory</h1>
           <div className="flex items-center gap-2 mt-1">
-            <p className="text-muted-foreground">Monitor and manage warehouse levels</p>
+            <p className="text-muted-foreground">Monitor and manage your shop's clothing stock</p>
             {!isKeeper && (
               <Badge variant="outline" className="text-blue-500 border-blue-500/30 gap-1">
                 <ShieldCheck className="w-3 h-3" /> View Only
@@ -151,7 +151,7 @@ export default function Stock() {
                     min="1"
                     value={newItem.min_quantity}
                     onChange={(e) => setNewItem({ ...newItem, min_quantity: e.target.value })}
-                    placeholder="e.g. 10"
+                    placeholder="e.g. 3"
                   />
                   <p className="text-xs text-muted-foreground">System flags as Low Stock when remaining drops below this number</p>
                 </div>
@@ -196,7 +196,7 @@ export default function Stock() {
                   <TableHead>Category</TableHead>
                   <TableHead className="text-center">Total Added</TableHead>
                   <TableHead className="text-center">Remaining</TableHead>
-                  <TableHead className="text-center">Issued</TableHead>
+                  <TableHead className="text-center">Sold</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Updated</TableHead>
                   {isKeeper && <TableHead className="text-right">Actions</TableHead>}
@@ -257,13 +257,13 @@ export default function Stock() {
         </CardContent>
       </Card>
 
-      {/* ISSUE DIALOG */}
+      {/* SALE DIALOG */}
       <Dialog open={isIssueDialogOpen} onOpenChange={setIsIssueDialogOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Issue Items</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Record Sale</DialogTitle></DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Quantity to Issue</Label>
+              <Label>Quantity Sold</Label>
               <Input
                 type="number"
                 placeholder="0"
@@ -272,16 +272,16 @@ export default function Stock() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Issued To (Name)</Label>
+              <Label>Customer Name (optional)</Label>
               <Input
-                placeholder="e.g. John Doe"
+                placeholder="e.g. Jane Doe"
                 value={issueRecipient}
                 onChange={(e) => setIssueRecipient(e.target.value.replace(/[^a-zA-Z\s'.,\-]/g, ''))}
               />
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsIssueDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleIssueConfirm} variant="destructive">Confirm Issue</Button>
+              <Button onClick={handleIssueConfirm} variant="destructive">Confirm Sale</Button>
             </DialogFooter>
           </div>
         </DialogContent>

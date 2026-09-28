@@ -16,7 +16,6 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
-import Uniform from "./components/uniform";
 import TemporaryStock from "./pages/TemporaryStock";
 
 const queryClient = new QueryClient();
@@ -68,17 +67,6 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-
-      {/* 2. ADD THE UNIFORM ROUTE HERE */}
-      <Route
-        path="/uniform"
-        element={
-          <ProtectedRoute>
-            <Uniform />
-          </ProtectedRoute>
-        }
-      />
-
       <Route
         path="/temporary-stock"
         element={

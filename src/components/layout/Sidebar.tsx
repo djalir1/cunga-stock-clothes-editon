@@ -22,7 +22,6 @@ import {
   ChevronRight,
   Settings,
   Bell,
-  Shirt,
   Timer,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -31,7 +30,6 @@ const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/stock', label: 'Stock Items', icon: Package, badge: 'New' },
   { path: '/categories', label: 'Categories', icon: FolderOpen },
-  { path: '/uniform', label: 'Uniform Inventory', icon: Shirt }, // Added Uniforms here
   { path: '/temporary-stock', label: 'Temporary Stock', icon: Timer },
   { path: '/movements', label: 'History', icon: History },
   { path: '/reports', label: 'Reports', icon: FileText },

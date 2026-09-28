@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { FEATURES } from '@/config/features';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTemporaryLoans, TempStockItem, TempStockLoan } from '@/hooks/useTemporaryLoans';
+import { useTemporaryStock, TempStockItem, TempStockCheckout, CheckoutStatus } from '@/hooks/useTemporaryStock';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,8 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Plus, Timer, CheckCircle2, Trash2, AlertTriangle,
-  User, Package, BookOpen, ShieldCheck, RefreshCcw,
-  FileSpreadsheet, FileDown, Filter
+  User, Package, ShoppingBag, ShieldCheck, RefreshCcw,
+  FileSpreadsheet, FileDown, Filter, Undo2, Phone
 } from 'lucide-react';
 import { format, formatDistanceToNow, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import jsPDF from 'jspdf';
@@ -37,7 +37,8 @@ function ComingSoon() {
       </Badge>
       <h2 className="text-2xl font-bold mb-2">Temporary Stock</h2>
       <p className="text-muted-foreground max-w-md text-base leading-relaxed">
-        This feature allows staff to lend items to teachers and track returns.
+        This feature lets staff track garments customers take on approval or reserve,
+        and record whether they come back or get bought.
         It's being prepared and will be available once activated.
       </p>
       <p className="mt-6 text-sm text-muted-foreground/60 italic">
@@ -47,83 +48,100 @@ function ComingSoon() {
   );
 }
 
+const statusLabel: Record<CheckoutStatus, string> = { out: 'Out', returned: 'Returned', sold: 'Sold' };
+
+function StatusBadge({ status }: { status: CheckoutStatus }) {
+  if (status === 'returned') return <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Returned</Badge>;
+  if (status === 'sold') return <Badge className="bg-primary/10 text-primary border-primary/20">Sold</Badge>;
+  return <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">Out</Badge>;
+}
+
 function TemporaryStockContent() {
   const { role } = useAuth();
   const isKeeper = role === 'storekeeper';
   const today = new Date().toISOString().slice(0, 10);
 
   const {
-    items, loans, activeLoans, returnedLoans, overdueLoans, isLoading,
-    addItem, deleteItem, lendItem, returnLoan, deleteLoan,
-  } = useTemporaryLoans();
+    items, checkouts, openCheckouts, closedCheckouts, overdueCheckouts, isLoading,
+    addItem, deleteItem, checkOut, closeCheckout, deleteCheckout,
+  } = useTemporaryStock();
 
   // --- Add Item dialog ---
+  const emptyItemForm = { name: '', description: '', size: '', color: '', total_quantity: '1' };
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
-  const [itemForm, setItemForm] = useState({ name: '', description: '', total_quantity: '1' });
+  const [itemForm, setItemForm] = useState(emptyItemForm);
 
-  // --- Lend dialog ---
-  const [lendingItem, setLendingItem] = useState<TempStockItem | null>(null);
-  const [lendForm, setLendForm] = useState({
-    teacher_name: '', department: '', quantity: '1',
-    borrowed_date: today, expected_return_date: '', notes: '',
-  });
+  // --- Check-out dialog ---
+  const emptyCheckoutForm = {
+    customer_name: '', customer_phone: '', quantity: '1', deposit: '',
+    taken_date: today, expected_return_date: '', notes: '',
+  };
+  const [checkoutItem, setCheckoutItem] = useState<TempStockItem | null>(null);
+  const [checkoutForm, setCheckoutForm] = useState(emptyCheckoutForm);
 
   // --- Confirm dialogs ---
-  const [returnConfirmId, setReturnConfirmId] = useState<string | null>(null);
+  const [closeConfirm, setCloseConfirm] = useState<{ id: string; outcome: 'returned' | 'sold' } | null>(null);
   const [deleteItemConfirmId, setDeleteItemConfirmId] = useState<string | null>(null);
-  const [deleteLoanConfirmId, setDeleteLoanConfirmId] = useState<string | null>(null);
+  const [deleteCheckoutConfirmId, setDeleteCheckoutConfirmId] = useState<string | null>(null);
 
   // --- Reports ---
   const [reportStart, setReportStart] = useState('');
   const [reportEnd, setReportEnd] = useState('');
   const [hasFiltered, setHasFiltered] = useState(false);
 
-  const reportLoans = hasFiltered && reportStart && reportEnd
-    ? loans.filter(l => {
-        const d = new Date(l.borrowed_date);
+  const reportRows = hasFiltered && reportStart && reportEnd
+    ? checkouts.filter(c => {
+        const d = new Date(c.taken_date);
         return isWithinInterval(d, { start: startOfDay(new Date(reportStart)), end: endOfDay(new Date(reportEnd)) });
       })
     : [];
 
   // --- Helpers ---
-  const isOverdue = (loan: TempStockLoan) =>
-    loan.expected_return_date && loan.expected_return_date < today;
+  const isOverdue = (c: TempStockCheckout) =>
+    c.expected_return_date && c.expected_return_date < today;
 
   const fmtDate = (d: string | null) => d ? format(new Date(d), 'dd MMM yyyy') : '—';
+  const fmtMoney = (n: number | null) => n === null ? '—' : `RWF ${n.toLocaleString()}`;
+  const variant = (size: string | null, color: string | null) => [size, color].filter(Boolean).join(' · ') || '—';
 
-  const resetItemForm = () => setItemForm({ name: '', description: '', total_quantity: '1' });
-  const openLend = (item: TempStockItem) => {
-    setLendingItem(item);
-    setLendForm({ teacher_name: '', department: '', quantity: '1', borrowed_date: today, expected_return_date: '', notes: '' });
+  const openCheckout = (item: TempStockItem) => {
+    setCheckoutItem(item);
+    setCheckoutForm(emptyCheckoutForm);
   };
 
   const handleAddItem = async () => {
     if (!itemForm.name.trim()) return;
-    await addItem.mutateAsync({ name: itemForm.name, description: itemForm.description || undefined, total_quantity: Number(itemForm.total_quantity) || 1 });
-    resetItemForm();
+    await addItem.mutateAsync({
+      name: itemForm.name,
+      description: itemForm.description || undefined,
+      size: itemForm.size || undefined,
+      color: itemForm.color || undefined,
+      total_quantity: Number(itemForm.total_quantity) || 1,
+    });
+    setItemForm(emptyItemForm);
     setIsAddItemOpen(false);
   };
 
-  const handleLend = async () => {
-    if (!lendingItem || !lendForm.teacher_name.trim()) return;
-    await lendItem.mutateAsync({
-      item_id: lendingItem.id,
-      teacher_name: lendForm.teacher_name,
-      department: lendForm.department || undefined,
-      quantity: Number(lendForm.quantity) || 1,
-      borrowed_date: lendForm.borrowed_date,
-      expected_return_date: lendForm.expected_return_date || undefined,
-      notes: lendForm.notes || undefined,
+  const handleCheckout = async () => {
+    if (!checkoutItem || !checkoutForm.customer_name.trim()) return;
+    await checkOut.mutateAsync({
+      item_id: checkoutItem.id,
+      customer_name: checkoutForm.customer_name,
+      customer_phone: checkoutForm.customer_phone || undefined,
+      quantity: Number(checkoutForm.quantity) || 1,
+      deposit: checkoutForm.deposit ? Number(checkoutForm.deposit) : undefined,
+      taken_date: checkoutForm.taken_date,
+      expected_return_date: checkoutForm.expected_return_date || undefined,
+      notes: checkoutForm.notes || undefined,
     });
-    setLendingItem(null);
+    setCheckoutItem(null);
   };
 
   // --- CSV export ---
   const exportCSV = () => {
-    const rows = reportLoans;
-    let csv = 'Teacher,Department,Item,Qty,Borrowed Date,Expected Return,Actual Return,Status,Notes\n';
-    rows.forEach(l => {
-      csv += `"${l.teacher_name}","${l.department || ''}","${l.item_name}",${l.quantity},${fmtDate(l.borrowed_date)},${fmtDate(l.expected_return_date)},${fmtDate(l.actual_return_date)},${l.status},"${l.notes || ''}"\n`;
+    let csv = 'Customer,Phone,Item,Size/Colour,Qty,Deposit (RWF),Taken Date,Expected Return,Closed Date,Status,Notes\n';
+    reportRows.forEach(c => {
+      csv += `"${c.customer_name}","${c.customer_phone || ''}","${c.item_name}","${variant(c.item_size, c.item_color)}",${c.quantity},${c.deposit ?? ''},${fmtDate(c.taken_date)},${fmtDate(c.expected_return_date)},${fmtDate(c.closed_date)},${statusLabel[c.status]},"${c.notes || ''}"\n`;
     });
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -163,33 +181,33 @@ function TemporaryStockContent() {
     doc.line(14, 27, pageWidth - 14, 27);
 
     doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 30, 30);
-    doc.text('Teacher Lending Report', 14, 37);
+    doc.text('Customer Checkout Report', 14, 37);
     doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100);
     doc.text(`Period: ${fmtDate(reportStart)} – ${fmtDate(reportEnd)}`, 14, 44);
     doc.text(`Generated: ${generatedAt}`, 14, 50);
-    doc.text(`Total records: ${reportLoans.length}`, 14, 56);
+    doc.text(`Total records: ${reportRows.length}`, 14, 56);
 
-    const tableData = reportLoans.map(l => [
-      l.teacher_name,
-      l.department || '—',
-      l.item_name,
-      l.quantity.toString(),
-      fmtDate(l.borrowed_date),
-      fmtDate(l.expected_return_date),
-      fmtDate(l.actual_return_date),
-      l.status === 'returned' ? 'Returned' : 'Active',
-      l.notes || '—',
+    const tableData = reportRows.map(c => [
+      c.customer_name,
+      c.customer_phone || '—',
+      c.item_name,
+      variant(c.item_size, c.item_color),
+      c.quantity.toString(),
+      c.deposit === null ? '—' : c.deposit.toLocaleString(),
+      fmtDate(c.taken_date),
+      fmtDate(c.expected_return_date),
+      fmtDate(c.closed_date),
+      statusLabel[c.status],
     ]);
 
     autoTable(doc, {
       startY: 62,
-      head: [['Teacher', 'Dept', 'Item', 'Qty', 'Borrowed', 'Exp. Return', 'Returned', 'Status', 'Notes']],
+      head: [['Customer', 'Phone', 'Item', 'Size/Colour', 'Qty', 'Deposit', 'Taken', 'Exp. Return', 'Closed', 'Status']],
       body: tableData,
       theme: 'grid',
       headStyles: { fillColor: navy, textColor: 255, fontStyle: 'bold', fontSize: 8 },
       alternateRowStyles: { fillColor: [241, 245, 255] },
       styles: { fontSize: 7.5, cellPadding: 3 },
-      columnStyles: { 8: { cellWidth: 28 } },
     });
 
     const pageCount = doc.getNumberOfPages();
@@ -203,6 +221,19 @@ function TemporaryStockContent() {
     doc.save(`cunga-temp-stock-${reportStart}-to-${reportEnd}.pdf`);
   };
 
+  const customerCell = (c: TempStockCheckout) => (
+    <div>
+      <div className="flex items-center gap-1.5 font-medium">
+        <User className="w-3.5 h-3.5 text-muted-foreground" />{c.customer_name}
+      </div>
+      {c.customer_phone && (
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+          <Phone className="w-3 h-3" />{c.customer_phone}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -210,7 +241,7 @@ function TemporaryStockContent() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Temporary Stock</h1>
           <div className="flex items-center gap-2 mt-1">
-            <p className="text-muted-foreground">Items temporarily lent to teachers</p>
+            <p className="text-muted-foreground">Garments out with customers on approval or reserved</p>
             {!isKeeper && (
               <Badge variant="outline" className="text-blue-500 border-blue-500/30 gap-1">
                 <ShieldCheck className="w-3 h-3" /> View Only
@@ -239,7 +270,7 @@ function TemporaryStockContent() {
           <CardContent className="pt-5">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-500/10 rounded-lg"><Timer className="w-5 h-5 text-blue-500" /></div>
-              <div><p className="text-2xl font-bold">{activeLoans.length}</p><p className="text-xs text-muted-foreground">Active Loans</p></div>
+              <div><p className="text-2xl font-bold">{openCheckouts.length}</p><p className="text-xs text-muted-foreground">Out with Customers</p></div>
             </div>
           </CardContent>
         </Card>
@@ -247,7 +278,7 @@ function TemporaryStockContent() {
           <CardContent className="pt-5">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-amber-500/10 rounded-lg"><AlertTriangle className="w-5 h-5 text-amber-500" /></div>
-              <div><p className="text-2xl font-bold text-amber-500">{overdueLoans.length}</p><p className="text-xs text-muted-foreground">Overdue</p></div>
+              <div><p className="text-2xl font-bold text-amber-500">{overdueCheckouts.length}</p><p className="text-xs text-muted-foreground">Overdue</p></div>
             </div>
           </CardContent>
         </Card>
@@ -256,7 +287,7 @@ function TemporaryStockContent() {
       <Tabs defaultValue="inventory">
         <TabsList className="grid w-full max-w-lg grid-cols-4">
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
-          <TabsTrigger value="active">Active ({activeLoans.length})</TabsTrigger>
+          <TabsTrigger value="active">Out ({openCheckouts.length})</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
         </TabsList>
@@ -265,8 +296,8 @@ function TemporaryStockContent() {
         <TabsContent value="inventory" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Lendable Items</CardTitle>
-              <CardDescription>Items available to lend to teachers</CardDescription>
+              <CardTitle>Temporary Items</CardTitle>
+              <CardDescription>Garments customers can take on approval or reserve</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -281,6 +312,8 @@ function TemporaryStockContent() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Item Name</TableHead>
+                      <TableHead>Size</TableHead>
+                      <TableHead>Colour</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead className="text-center">Total</TableHead>
                       <TableHead className="text-center">Available</TableHead>
@@ -292,6 +325,8 @@ function TemporaryStockContent() {
                     {items.map(item => (
                       <TableRow key={item.id}>
                         <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell>{item.size || '—'}</TableCell>
+                        <TableCell>{item.color || '—'}</TableCell>
                         <TableCell className="text-muted-foreground text-sm">{item.description || '—'}</TableCell>
                         <TableCell className="text-center font-mono">{item.total_quantity}</TableCell>
                         <TableCell className="text-center font-mono">
@@ -309,10 +344,10 @@ function TemporaryStockContent() {
                                 size="sm"
                                 variant="outline"
                                 className="gap-1"
-                                onClick={() => openLend(item)}
+                                onClick={() => openCheckout(item)}
                                 disabled={item.available_quantity === 0}
                               >
-                                <BookOpen className="w-3.5 h-3.5" /> Lend
+                                <User className="w-3.5 h-3.5" /> Check Out
                               </Button>
                               <Button
                                 size="icon"
@@ -334,72 +369,78 @@ function TemporaryStockContent() {
           </Card>
         </TabsContent>
 
-        {/* ── ACTIVE LOANS TAB ── */}
+        {/* ── OUT WITH CUSTOMERS TAB ── */}
         <TabsContent value="active" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Active Loans</CardTitle>
-              <CardDescription>Items currently out with teachers</CardDescription>
+              <CardTitle>Out with Customers</CardTitle>
+              <CardDescription>Garments currently taken on approval or reserved</CardDescription>
             </CardHeader>
             <CardContent>
-              {activeLoans.length === 0 ? (
+              {openCheckouts.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <CheckCircle2 className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                  <p>No active loans. All items are in.</p>
+                  <p>Nothing is out with customers right now.</p>
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Teacher</TableHead>
-                      <TableHead>Department</TableHead>
+                      <TableHead>Customer</TableHead>
                       <TableHead>Item</TableHead>
                       <TableHead className="text-center">Qty</TableHead>
-                      <TableHead>Borrowed</TableHead>
+                      <TableHead>Deposit</TableHead>
+                      <TableHead>Taken</TableHead>
                       <TableHead>Expected Return</TableHead>
                       <TableHead>Notes</TableHead>
                       {isKeeper && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {activeLoans.map(loan => (
-                      <TableRow key={loan.id} className={isOverdue(loan) ? 'bg-amber-500/5' : ''}>
+                    {openCheckouts.map(c => (
+                      <TableRow key={c.id} className={isOverdue(c) ? 'bg-amber-500/5' : ''}>
+                        <TableCell>{customerCell(c)}</TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1.5 font-medium">
-                            <User className="w-3.5 h-3.5 text-muted-foreground" />{loan.teacher_name}
-                          </div>
+                          <div>{c.item_name}</div>
+                          <div className="text-xs text-muted-foreground">{variant(c.item_size, c.item_color)}</div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">{loan.department || '—'}</TableCell>
-                        <TableCell>{loan.item_name}</TableCell>
-                        <TableCell className="text-center font-mono">{loan.quantity}</TableCell>
-                        <TableCell className="text-sm">{fmtDate(loan.borrowed_date)}</TableCell>
+                        <TableCell className="text-center font-mono">{c.quantity}</TableCell>
+                        <TableCell className="text-sm">{fmtMoney(c.deposit)}</TableCell>
+                        <TableCell className="text-sm">{fmtDate(c.taken_date)}</TableCell>
                         <TableCell>
-                          {loan.expected_return_date ? (
+                          {c.expected_return_date ? (
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className={`text-sm ${isOverdue(loan) ? 'text-amber-600 font-semibold' : ''}`}>
-                                {fmtDate(loan.expected_return_date)}
+                              <span className={`text-sm ${isOverdue(c) ? 'text-amber-600 font-semibold' : ''}`}>
+                                {fmtDate(c.expected_return_date)}
                               </span>
-                              {isOverdue(loan) && (
+                              {isOverdue(c) && (
                                 <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px]">
-                                  {formatDistanceToNow(new Date(loan.expected_return_date!), { addSuffix: true })}
+                                  {formatDistanceToNow(new Date(c.expected_return_date!), { addSuffix: true })}
                                 </Badge>
                               )}
                             </div>
                           ) : <span className="text-muted-foreground">—</span>}
                         </TableCell>
-                        <TableCell className="text-sm text-muted-foreground max-w-[120px] truncate">{loan.notes || '—'}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-[120px] truncate">{c.notes || '—'}</TableCell>
                         {isKeeper && (
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
                               <Button
                                 size="sm" variant="outline"
                                 className="gap-1 text-green-600 border-green-600/30 hover:bg-green-600/10"
-                                onClick={() => setReturnConfirmId(loan.id)}
+                                onClick={() => setCloseConfirm({ id: c.id, outcome: 'returned' })}
                               >
-                                <CheckCircle2 className="w-3.5 h-3.5" /> Returned
+                                <Undo2 className="w-3.5 h-3.5" /> Returned
+                              </Button>
+                              <Button
+                                size="sm" variant="outline"
+                                className="gap-1 text-primary border-primary/30 hover:bg-primary/10"
+                                onClick={() => setCloseConfirm({ id: c.id, outcome: 'sold' })}
+                              >
+                                <ShoppingBag className="w-3.5 h-3.5" /> Sold
                               </Button>
                               <Button size="icon" variant="ghost" className="text-destructive hover:bg-destructive/10"
-                                onClick={() => setDeleteLoanConfirmId(loan.id)}>
+                                onClick={() => setDeleteCheckoutConfirmId(c.id)}>
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </div>
@@ -418,42 +459,45 @@ function TemporaryStockContent() {
         <TabsContent value="history" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Return History</CardTitle>
-              <CardDescription>Items that have been returned</CardDescription>
+              <CardTitle>History</CardTitle>
+              <CardDescription>Garments that were returned or bought</CardDescription>
             </CardHeader>
             <CardContent>
-              {returnedLoans.length === 0 ? (
+              {closedCheckouts.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
-                  <CheckCircle2 className="w-10 h-10 mx-auto mb-3 opacity-30" /><p>No returned items yet.</p>
+                  <CheckCircle2 className="w-10 h-10 mx-auto mb-3 opacity-30" /><p>No closed records yet.</p>
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Teacher</TableHead>
-                      <TableHead>Department</TableHead>
+                      <TableHead>Customer</TableHead>
                       <TableHead>Item</TableHead>
                       <TableHead className="text-center">Qty</TableHead>
-                      <TableHead>Borrowed</TableHead>
-                      <TableHead>Returned</TableHead>
+                      <TableHead>Taken</TableHead>
+                      <TableHead>Closed</TableHead>
+                      <TableHead>Outcome</TableHead>
                       <TableHead>Notes</TableHead>
                       {isKeeper && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {returnedLoans.map(loan => (
-                      <TableRow key={loan.id}>
-                        <TableCell className="font-medium">{loan.teacher_name}</TableCell>
-                        <TableCell className="text-muted-foreground">{loan.department || '—'}</TableCell>
-                        <TableCell>{loan.item_name}</TableCell>
-                        <TableCell className="text-center font-mono">{loan.quantity}</TableCell>
-                        <TableCell className="text-sm">{fmtDate(loan.borrowed_date)}</TableCell>
-                        <TableCell className="text-sm text-green-600 font-medium">{fmtDate(loan.actual_return_date)}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{loan.notes || '—'}</TableCell>
+                    {closedCheckouts.map(c => (
+                      <TableRow key={c.id}>
+                        <TableCell>{customerCell(c)}</TableCell>
+                        <TableCell>
+                          <div>{c.item_name}</div>
+                          <div className="text-xs text-muted-foreground">{variant(c.item_size, c.item_color)}</div>
+                        </TableCell>
+                        <TableCell className="text-center font-mono">{c.quantity}</TableCell>
+                        <TableCell className="text-sm">{fmtDate(c.taken_date)}</TableCell>
+                        <TableCell className="text-sm font-medium">{fmtDate(c.closed_date)}</TableCell>
+                        <TableCell><StatusBadge status={c.status} /></TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{c.notes || '—'}</TableCell>
                         {isKeeper && (
                           <TableCell className="text-right">
                             <Button size="icon" variant="ghost" className="text-destructive hover:bg-destructive/10"
-                              onClick={() => setDeleteLoanConfirmId(loan.id)}>
+                              onClick={() => setDeleteCheckoutConfirmId(c.id)}>
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </TableCell>
@@ -499,52 +543,51 @@ function TemporaryStockContent() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>Lending Report</CardTitle>
+                  <CardTitle>Checkout Report</CardTitle>
                   <CardDescription>
-                    {fmtDate(reportStart)} – {fmtDate(reportEnd)} &nbsp;·&nbsp; {reportLoans.length} records
+                    {fmtDate(reportStart)} – {fmtDate(reportEnd)} &nbsp;·&nbsp; {reportRows.length} records
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" className="gap-2" onClick={exportCSV} disabled={reportLoans.length === 0}>
+                  <Button variant="outline" className="gap-2" onClick={exportCSV} disabled={reportRows.length === 0}>
                     <FileSpreadsheet className="w-4 h-4" /> CSV
                   </Button>
-                  <Button className="gap-2" onClick={exportPDF} disabled={reportLoans.length === 0}>
+                  <Button className="gap-2" onClick={exportPDF} disabled={reportRows.length === 0}>
                     <FileDown className="w-4 h-4" /> PDF
                   </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                {reportLoans.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">No loans in the selected date range.</div>
+                {reportRows.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">No records in the selected date range.</div>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Teacher</TableHead>
-                        <TableHead>Department</TableHead>
+                        <TableHead>Customer</TableHead>
                         <TableHead>Item</TableHead>
                         <TableHead className="text-center">Qty</TableHead>
-                        <TableHead>Borrowed</TableHead>
-                        <TableHead>Returned</TableHead>
+                        <TableHead>Deposit</TableHead>
+                        <TableHead>Taken</TableHead>
+                        <TableHead>Closed</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Notes</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {reportLoans.map(l => (
-                        <TableRow key={l.id}>
-                          <TableCell className="font-medium">{l.teacher_name}</TableCell>
-                          <TableCell className="text-muted-foreground">{l.department || '—'}</TableCell>
-                          <TableCell>{l.item_name}</TableCell>
-                          <TableCell className="text-center font-mono">{l.quantity}</TableCell>
-                          <TableCell className="text-sm">{fmtDate(l.borrowed_date)}</TableCell>
-                          <TableCell className="text-sm">{fmtDate(l.actual_return_date)}</TableCell>
+                      {reportRows.map(c => (
+                        <TableRow key={c.id}>
+                          <TableCell>{customerCell(c)}</TableCell>
                           <TableCell>
-                            {l.status === 'returned'
-                              ? <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Returned</Badge>
-                              : <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">Active</Badge>}
+                            <div>{c.item_name}</div>
+                            <div className="text-xs text-muted-foreground">{variant(c.item_size, c.item_color)}</div>
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{l.notes || '—'}</TableCell>
+                          <TableCell className="text-center font-mono">{c.quantity}</TableCell>
+                          <TableCell className="text-sm">{fmtMoney(c.deposit)}</TableCell>
+                          <TableCell className="text-sm">{fmtDate(c.taken_date)}</TableCell>
+                          <TableCell className="text-sm">{fmtDate(c.closed_date)}</TableCell>
+                          <TableCell><StatusBadge status={c.status} /></TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{c.notes || '—'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -560,15 +603,25 @@ function TemporaryStockContent() {
       <Dialog open={isAddItemOpen} onOpenChange={setIsAddItemOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Add Item to Temporary Stock</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-4 py-2">
+            <div className="space-y-2 col-span-2">
               <Label>Item Name <span className="text-destructive">*</span></Label>
-              <Input placeholder="e.g. 30cm Ruler, Calculator, Scissors" value={itemForm.name}
+              <Input placeholder="e.g. Evening Dress, Suit, Leather Jacket" value={itemForm.name}
                 onChange={e => setItemForm({ ...itemForm, name: e.target.value })} />
             </div>
             <div className="space-y-2">
+              <Label>Size</Label>
+              <Input placeholder="e.g. M, 42, 10" value={itemForm.size}
+                onChange={e => setItemForm({ ...itemForm, size: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Colour</Label>
+              <Input placeholder="e.g. Black" value={itemForm.color}
+                onChange={e => setItemForm({ ...itemForm, color: e.target.value })} />
+            </div>
+            <div className="space-y-2 col-span-2">
               <Label>Description (optional)</Label>
-              <Input placeholder="e.g. Wooden ruler, scientific calculator" value={itemForm.description}
+              <Input placeholder="e.g. Silk, slim fit" value={itemForm.description}
                 onChange={e => setItemForm({ ...itemForm, description: e.target.value })} />
             </div>
             <div className="space-y-2">
@@ -578,79 +631,90 @@ function TemporaryStockContent() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { resetItemForm(); setIsAddItemOpen(false); }}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setItemForm(emptyItemForm); setIsAddItemOpen(false); }}>Cancel</Button>
             <Button onClick={handleAddItem} disabled={!itemForm.name.trim() || addItem.isPending}>Add Item</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ── Lend Dialog ── */}
-      <Dialog open={!!lendingItem} onOpenChange={v => !v && setLendingItem(null)}>
+      {/* ── Check Out Dialog ── */}
+      <Dialog open={!!checkoutItem} onOpenChange={v => !v && setCheckoutItem(null)}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle>Lend Item</DialogTitle>
-            {lendingItem && (
+            <DialogTitle>Check Out to Customer</DialogTitle>
+            {checkoutItem && (
               <p className="text-sm text-muted-foreground mt-1">
-                <span className="font-medium text-foreground">{lendingItem.name}</span>
-                &nbsp;·&nbsp;{lendingItem.available_quantity} available
+                <span className="font-medium text-foreground">{checkoutItem.name}</span>
+                {(checkoutItem.size || checkoutItem.color) && <>&nbsp;·&nbsp;{variant(checkoutItem.size, checkoutItem.color)}</>}
+                &nbsp;·&nbsp;{checkoutItem.available_quantity} available
               </p>
             )}
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-2">
             <div className="space-y-2 col-span-2">
-              <Label>Teacher Name <span className="text-destructive">*</span></Label>
-              <Input placeholder="e.g. Mr. John Smith" value={lendForm.teacher_name}
-                onChange={e => setLendForm({ ...lendForm, teacher_name: e.target.value })} />
+              <Label>Customer Name <span className="text-destructive">*</span></Label>
+              <Input placeholder="e.g. Jane Doe" value={checkoutForm.customer_name}
+                onChange={e => setCheckoutForm({ ...checkoutForm, customer_name: e.target.value })} />
             </div>
             <div className="space-y-2">
-              <Label>Department / Subject</Label>
-              <Input placeholder="e.g. Mathematics" value={lendForm.department}
-                onChange={e => setLendForm({ ...lendForm, department: e.target.value })} />
+              <Label>Phone</Label>
+              <Input type="tel" placeholder="e.g. 0788 000 000" value={checkoutForm.customer_phone}
+                onChange={e => setCheckoutForm({ ...checkoutForm, customer_phone: e.target.value })} />
             </div>
             <div className="space-y-2">
               <Label>Quantity</Label>
-              <Input type="number" min="1" max={lendingItem?.available_quantity}
-                value={lendForm.quantity}
-                onChange={e => setLendForm({ ...lendForm, quantity: e.target.value })} />
+              <Input type="number" min="1" max={checkoutItem?.available_quantity}
+                value={checkoutForm.quantity}
+                onChange={e => setCheckoutForm({ ...checkoutForm, quantity: e.target.value })} />
             </div>
             <div className="space-y-2">
-              <Label>Date Borrowed <span className="text-destructive">*</span></Label>
-              <Input type="date" value={lendForm.borrowed_date}
-                onChange={e => setLendForm({ ...lendForm, borrowed_date: e.target.value })} />
+              <Label>Date Taken <span className="text-destructive">*</span></Label>
+              <Input type="date" value={checkoutForm.taken_date}
+                onChange={e => setCheckoutForm({ ...checkoutForm, taken_date: e.target.value })} />
             </div>
             <div className="space-y-2">
               <Label>Expected Return Date</Label>
-              <Input type="date" value={lendForm.expected_return_date}
-                onChange={e => setLendForm({ ...lendForm, expected_return_date: e.target.value })} />
+              <Input type="date" value={checkoutForm.expected_return_date}
+                onChange={e => setCheckoutForm({ ...checkoutForm, expected_return_date: e.target.value })} />
+            </div>
+            <div className="space-y-2 col-span-2">
+              <Label>Deposit Paid (RWF)</Label>
+              <Input type="number" min="0" placeholder="0" value={checkoutForm.deposit}
+                onChange={e => setCheckoutForm({ ...checkoutForm, deposit: e.target.value })} />
             </div>
             <div className="space-y-2 col-span-2">
               <Label>Notes</Label>
-              <Textarea placeholder="Any additional details..." rows={2} value={lendForm.notes}
-                onChange={e => setLendForm({ ...lendForm, notes: e.target.value })} />
+              <Textarea placeholder="e.g. Trying for a wedding, may need alterations..." rows={2} value={checkoutForm.notes}
+                onChange={e => setCheckoutForm({ ...checkoutForm, notes: e.target.value })} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setLendingItem(null)}>Cancel</Button>
-            <Button onClick={handleLend}
-              disabled={!lendForm.teacher_name.trim() || !lendForm.borrowed_date || lendItem.isPending}>
-              Confirm Lending
+            <Button variant="outline" onClick={() => setCheckoutItem(null)}>Cancel</Button>
+            <Button onClick={handleCheckout}
+              disabled={!checkoutForm.customer_name.trim() || !checkoutForm.taken_date || checkOut.isPending}>
+              Confirm Check Out
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ── Return Confirm ── */}
-      <AlertDialog open={!!returnConfirmId} onOpenChange={() => setReturnConfirmId(null)}>
+      {/* ── Returned / Sold Confirm ── */}
+      <AlertDialog open={!!closeConfirm} onOpenChange={() => setCloseConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Mark as Returned?</AlertDialogTitle>
-            <AlertDialogDescription>Today's date will be recorded as the return date and the item will be added back to available stock.</AlertDialogDescription>
+            <AlertDialogTitle>{closeConfirm?.outcome === 'sold' ? 'Mark as Sold?' : 'Mark as Returned?'}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {closeConfirm?.outcome === 'sold'
+                ? "Today's date will be recorded and the pieces will be removed from temporary stock as bought by the customer."
+                : "Today's date will be recorded as the return date and the pieces will be added back to available stock."}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-green-600 hover:bg-green-700"
-              onClick={() => { if (returnConfirmId) returnLoan.mutate(returnConfirmId); setReturnConfirmId(null); }}>
-              Confirm Return
+            <AlertDialogAction
+              className={closeConfirm?.outcome === 'sold' ? '' : 'bg-green-600 hover:bg-green-700'}
+              onClick={() => { if (closeConfirm) closeCheckout.mutate(closeConfirm); setCloseConfirm(null); }}>
+              {closeConfirm?.outcome === 'sold' ? 'Confirm Sale' : 'Confirm Return'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -661,7 +725,7 @@ function TemporaryStockContent() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete item?</AlertDialogTitle>
-            <AlertDialogDescription>This will permanently delete the item and all its loan records. Cannot be undone.</AlertDialogDescription>
+            <AlertDialogDescription>This will permanently delete the item and all its customer records. Cannot be undone.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -673,17 +737,17 @@ function TemporaryStockContent() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ── Delete Loan Confirm ── */}
-      <AlertDialog open={!!deleteLoanConfirmId} onOpenChange={() => setDeleteLoanConfirmId(null)}>
+      {/* ── Delete Checkout Confirm ── */}
+      <AlertDialog open={!!deleteCheckoutConfirmId} onOpenChange={() => setDeleteCheckoutConfirmId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete loan record?</AlertDialogTitle>
-            <AlertDialogDescription>This will permanently remove the lending record. If the item is still out, the quantity will be restored.</AlertDialogDescription>
+            <AlertDialogTitle>Delete record?</AlertDialogTitle>
+            <AlertDialogDescription>This will permanently remove the customer record. If the item is still out, the quantity will be restored.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive hover:bg-destructive/90"
-              onClick={() => { if (deleteLoanConfirmId) deleteLoan.mutate(deleteLoanConfirmId); setDeleteLoanConfirmId(null); }}>
+              onClick={() => { if (deleteCheckoutConfirmId) deleteCheckout.mutate(deleteCheckoutConfirmId); setDeleteCheckoutConfirmId(null); }}>
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

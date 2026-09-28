@@ -10,7 +10,7 @@ import {
   ShieldCheck,
   Smartphone,
   Zap,
-  GraduationCap,
+  Shirt,
   Factory,
   Store,
   Warehouse,
@@ -48,7 +48,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { CONTACT } from '@/config/contact';
 
 type IndustryKey =
-  | 'schools'
+  | 'clothing'
   | 'factories'
   | 'retail'
   | 'warehouses'
@@ -67,15 +67,15 @@ interface Industry {
 
 const INDUSTRIES: Industry[] = [
   {
-    key: 'schools',
-    label: 'Schools',
-    icon: GraduationCap,
-    tagline: 'Issue and track student items with confidence.',
+    key: 'clothing',
+    label: 'Clothing Stores',
+    icon: Shirt,
+    tagline: 'Every garment, size and sale — tracked with confidence.',
     features: [
-      'Issue uniforms & sweaters to students',
-      'Track sweater numbers and sizes',
+      'Track stock by category, size & colour',
+      'Items out on approval or reserved for customers',
       'Storekeeper & supervisor roles',
-      'Term-by-term issuance reports',
+      'Daily, weekly & monthly sales reports',
     ],
   },
   {
@@ -248,7 +248,7 @@ export default function Landing() {
 
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [selectedIndustry, setSelectedIndustry] = useState<IndustryKey>('schools');
+  const [selectedIndustry, setSelectedIndustry] = useState<IndustryKey>('clothing');
   const activeIndustry = useMemo(
     () => INDUSTRIES.find((i) => i.key === selectedIndustry) ?? INDUSTRIES[0],
     [selectedIndustry]
@@ -493,7 +493,7 @@ export default function Landing() {
             </h1>
 
             <p className="mt-5 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
-              Cunga Stock powers factories, schools, retail shops, warehouses, restaurants and more —
+              Cunga Stock powers clothing stores, factories, retail shops, warehouses, restaurants and more —
               customised to how your team actually works. One clean system, endless possibilities.
             </p>
 
@@ -573,7 +573,7 @@ export default function Landing() {
                   <ul className="divide-y divide-border">
                     {[
                       { name: 'Raw Cotton', tag: 'IN', qty: '250 kg', color: 'text-success' },
-                      { name: 'Sweater #124', tag: 'ISSUED', qty: '1 pc', color: 'text-primary' },
+                      { name: 'Denim Jacket (M)', tag: 'SOLD', qty: '1 pc', color: 'text-primary' },
                       { name: 'Paracetamol 500mg', tag: 'OUT', qty: '30 tabs', color: 'text-warning' },
                     ].map((r) => (
                       <li
@@ -744,7 +744,7 @@ export default function Landing() {
                 Save time. Cut losses. Stay in control.
               </h2>
               <p className="mt-4 text-sm sm:text-base text-muted-foreground">
-                Whether you run a school store, a factory floor or a growing chain of shops — Cunga Stock
+                Whether you run a clothing boutique, a factory floor or a growing chain of shops — Cunga Stock
                 gives you the clarity to make better decisions, every day.
               </p>
               <ul className="mt-6 space-y-3">
@@ -1012,7 +1012,7 @@ export default function Landing() {
                 </div>
               </div>
               <p className="mt-4 text-sm opacity-80 max-w-md">
-                One inventory platform that adapts to schools, factories, shops, warehouses and more —
+                One inventory platform that adapts to clothing stores, factories, shops, warehouses and more —
                 so your team spends less time on paperwork and more time growing the business.
               </p>
             </div>

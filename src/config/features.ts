@@ -6,9 +6,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const FEATURES = {
-  /** Temporary Stock — teacher lending module (sidebar page + its own DB tables) */
-  temporaryStock: false,
-
-  /** Sweater Numbers — unique number field when issuing sweater-category uniforms */
-  sweaterNumbers: false,
+  /** Temporary Stock — garments out with customers on approval / reserved (sidebar page + its own DB tables) */
+  temporaryStock: true,
 } as const;
