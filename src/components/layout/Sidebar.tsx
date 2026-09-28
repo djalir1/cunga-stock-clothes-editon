@@ -38,9 +38,11 @@ const navItems = [
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  /** Number of stock alerts; the bell shows a dot only when there are some */
+  alertCount?: number;
 }
 
-export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export function Sidebar({ collapsed, onToggle, alertCount = 0 }: SidebarProps) {
   const { user, profile, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
@@ -161,7 +163,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   className="text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent relative"
                 >
                   <Bell className="w-5 h-5" />
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full animate-pulse" />
+                  {alertCount > 0 && (
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full animate-pulse" />
+                  )}
                 </Button>
               </Link>
             </TooltipTrigger>

@@ -24,9 +24,11 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { ROLE_LABELS } from '@/lib/types';
+import { TeamSection } from '@/components/settings/TeamSection';
 
 export default function Settings() {
-  const { user, profile, role, signOut } = useAuth();
+  const { user, profile, role, isOwner, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [isSaving, setIsSaving] = useState(false);
@@ -95,9 +97,9 @@ export default function Settings() {
                 <Mail className="w-4 h-4" />
                 {user?.email}
               </p>
-              <Badge variant="outline" className="capitalize">
+              <Badge variant="outline">
                 <Shield className="w-3 h-3 mr-1" />
-                {role || 'storekeeper'}
+                {role ? ROLE_LABELS[role] : 'No access'}
               </Badge>
             </div>
           </div>
@@ -151,6 +153,8 @@ export default function Settings() {
           </div>
         </CardContent>
       </Card>
+
+      {isOwner && <TeamSection />}
 
       {/* Notifications Section */}
       <Card>

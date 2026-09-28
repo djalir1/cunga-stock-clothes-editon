@@ -21,7 +21,7 @@ const colorPresets = [
 export default function Categories() {
   const { categories, isLoading, addCategory, updateCategory, deleteCategory } = useCategories();
   const { items } = useStockItems();
-  const { role } = useAuth(); // 2. Get the role from AuthContext
+  const { canEdit } = useAuth(); // 2. Get the role from AuthContext
   
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
@@ -30,7 +30,7 @@ export default function Categories() {
   const [editData, setEditData] = useState({ name: '', description: '', color: '#3B82F6' });
 
   // Safety check: Prevents supervisor from triggering mutation even if they find a way to click
-  const isKeeper = role === 'storekeeper';
+  const isKeeper = canEdit;
 
   const handleAddCategory = () => {
     if (!newCategory.name || !isKeeper) return;

@@ -1,5 +1,11 @@
 export type StockStatus = 'in_stock' | 'out_of_stock' | 'low_stock';
-export type AppRole = 'admin' | 'storekeeper';
+export type AppRole = 'owner' | 'storekeeper' | 'admin';
+
+export const ROLE_LABELS: Record<AppRole, string> = {
+  owner: 'Owner',
+  storekeeper: 'Storekeeper',
+  admin: 'Supervisor (view only)',
+};
 export type MovementType = 'added' | 'issued' | 'returned' | 'adjusted';
 
 export interface Category {

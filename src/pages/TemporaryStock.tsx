@@ -57,8 +57,8 @@ function StatusBadge({ status }: { status: CheckoutStatus }) {
 }
 
 function TemporaryStockContent() {
-  const { role } = useAuth();
-  const isKeeper = role === 'storekeeper';
+  const { canEdit } = useAuth();
+  const isKeeper = canEdit;
   const today = new Date().toISOString().slice(0, 10);
 
   const {

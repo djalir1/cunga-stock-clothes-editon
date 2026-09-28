@@ -17,9 +17,9 @@ import { formatDistanceToNow } from 'date-fns';
 export default function Stock() {
   const { items, isLoading, addItem, issueItem, returnItem, deleteItem } = useStockItems();
   const { categories } = useCategories();
-  const { role } = useAuth();
+  const { canEdit } = useAuth();
 
-  const isKeeper = role === 'storekeeper';
+  const isKeeper = canEdit;
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isAddOpen, setIsAddOpen] = useState(false);

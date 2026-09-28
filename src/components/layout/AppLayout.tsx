@@ -43,6 +43,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
 
   const { items } = useStockItems();
+  const alertCount = items.filter(i => i.status === 'low_stock' || i.status === 'out_of_stock').length;
   const { categories } = useCategories();
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -102,7 +103,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background">
       {/* Desktop Sidebar */}
       <div className="hidden lg:block">
-        <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+        <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} alertCount={alertCount} />
       </div>
 
       {/* Main Content */}
@@ -231,10 +232,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
 
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full" />
-              </Button>
+              <Link to="/notifications">
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell className="h-5 w-5" />
+                  {alertCount > 0 && (
+                    <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full" />
+                  )}
+                </Button>
+              </Link>
 
               <Button variant="ghost" size="icon" onClick={toggleTheme}>
                 {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
