@@ -20,9 +20,10 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { MoneyInput } from '@/components/shop/MoneyInput';
 import {
   Search, ShoppingCart, Plus, Minus, Trash2, Printer, FileDown, Receipt, ShieldCheck,
-  CheckCircle2, RefreshCcw, Shirt, Wallet, HandCoins, Layers,
+  CheckCircle2, RefreshCcw, Shirt, Wallet, HandCoins, Layers, Ban,
 } from 'lucide-react';
 
 interface Picked { item: StockItemWithCategory; variant: StockVariant }
@@ -41,10 +42,10 @@ function splitSetPrice(total: number, parts: Picked[]): number[] {
 }
 
 export default function Sales() {
-  const { canEdit } = useAuth();
+  const { canEdit, isOwner } = useAuth();
   const { items, isLoading: itemsLoading } = useStockItems();
   const { sets } = useItemSets();
-  const { recentSales, isLoading: salesLoading, recordSale } = useSales();
+  const { recentSales, isLoading: salesLoading, recordSale, voidSale } = useSales();
   const [searchParams] = useSearchParams();
 
   const [pickTab, setPickTab] = useState<'items' | 'sets'>(searchParams.get('tab') === 'sets' ? 'sets' : 'items');
@@ -56,6 +57,7 @@ export default function Sales() {
   const [dueDate, setDueDate] = useState('');
   const [method, setMethod] = useState<PaymentMethod>('cash');
   const [receipt, setReceipt] = useState<SaleWithLines | null>(null);
+  const [cancelReason, setCancelReason] = useState<string | null>(null);
   const [setPick, setSetPick] = useState<{ set: ItemSet; chosen: Record<string, string> } | null>(null);
 
   const itemById = useMemo(() => new Map(items.map(i => [i.id, i])), [items]);
@@ -150,6 +152,7 @@ export default function Sales() {
       method,
     });
     resetSale();
+    setCancelReason(null);
     setReceipt(sale);
   };
 
@@ -352,13 +355,14 @@ export default function Sales() {
                           </Button>
                         </div>
                         <span className="text-muted-foreground text-sm">×</span>
-                        <Input
-                          type="number" min="0" inputMode="numeric"
-                          placeholder={e.kind === 'set' ? 'Set price (RWF)' : 'Price (RWF)'}
-                          value={e.price}
-                          onChange={ev => updateEntry(e.key, { price: ev.target.value })}
-                          className={cn('h-9', e.price === '' && 'border-amber-400 focus-visible:ring-amber-400')}
-                        />
+                        <div className="flex-1">
+                          <MoneyInput
+                            placeholder={e.kind === 'set' ? 'Set price' : 'Price'}
+                            value={e.price}
+                            onChange={price => updateEntry(e.key, { price })}
+                            className={cn('h-9', e.price === '' && 'border-amber-400 focus-visible:ring-amber-400')}
+                          />
+                        </div>
                       </div>
                       <div className="flex items-center justify-between text-xs">
                         {e.kind === 'item' && e.variant.default_price !== null && e.price === '' ? (
@@ -405,9 +409,8 @@ export default function Sales() {
                 {!payInFull && (
                   <div className="space-y-3 rounded-lg bg-amber-500/5 border border-amber-500/20 p-3 animate-fade-in">
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Paid now (RWF) — 0 if nothing</Label>
-                      <Input type="number" min="0" inputMode="numeric" placeholder="0" value={amountPaid}
-                        onChange={e => setAmountPaid(e.target.value)} />
+                      <Label className="text-xs">Paid now — 0 if nothing</Label>
+                      <MoneyInput placeholder="0" value={amountPaid} onChange={setAmountPaid} />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs">Pay the rest by</Label>
@@ -485,7 +488,7 @@ export default function Sales() {
                 </TableHeader>
                 <TableBody>
                   {recentSales.map(s => (
-                    <TableRow key={s.id} className="cursor-pointer" onClick={() => setReceipt(s)}>
+                    <TableRow key={s.id} className={cn('cursor-pointer', s.voided_at && 'opacity-50 line-through')} onClick={() => { setReceipt(s); setCancelReason(null); }}>
                       <TableCell className="font-mono text-sm">{receiptNumber(s.receipt_no)}</TableCell>
                       <TableCell className="text-sm whitespace-nowrap">{format(new Date(s.sold_at), 'dd MMM, HH:mm')}</TableCell>
                       <TableCell className="text-sm">{s.customer_name || <span className="text-muted-foreground">Walk-in</span>}</TableCell>
@@ -504,7 +507,7 @@ export default function Sales() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right font-semibold whitespace-nowrap">{formatRWF(s.total)}</TableCell>
-                      <TableCell><PaymentBadge status={s.payment_status} /></TableCell>
+                      <TableCell>{s.voided_at ? <Badge variant="outline" className="text-destructive border-destructive/40 no-underline">Cancelled</Badge> : <PaymentBadge status={s.payment_status} />}</TableCell>
                       <TableCell className="text-right">
                         <Button size="icon" variant="ghost" aria-label="Print receipt"
                           onClick={e => { e.stopPropagation(); printReceipt(s); }}>
@@ -556,6 +559,11 @@ export default function Sales() {
         description={receipt && format(new Date(receipt.sold_at), 'dd MMM yyyy · HH:mm')}
         footer={receipt && (
           <>
+            {isOwner && !receipt.voided_at && cancelReason === null && (
+              <Button variant="ghost" className="gap-2 text-destructive hover:bg-destructive/10 sm:mr-auto" onClick={() => setCancelReason('')}>
+                <Ban className="w-4 h-4" /> Cancel sale
+              </Button>
+            )}
             <Button variant="outline" className="gap-2" onClick={() => downloadReceipt(receipt)}><FileDown className="w-4 h-4" /> Download PDF</Button>
             <Button className="gap-2" onClick={() => printReceipt(receipt)}><Printer className="w-4 h-4" /> Print</Button>
           </>
@@ -563,6 +571,30 @@ export default function Sales() {
       >
         {receipt && (
           <div className="space-y-3 text-sm">
+            {receipt.voided_at && (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-destructive">
+                <p className="font-semibold flex items-center gap-2"><Ban className="w-4 h-4" /> Cancelled {format(new Date(receipt.voided_at), 'dd MMM, HH:mm')}</p>
+                {receipt.void_reason && <p className="text-xs mt-0.5">Reason: {receipt.void_reason}</p>}
+              </div>
+            )}
+            {cancelReason !== null && (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 space-y-2 animate-fade-in">
+                <p className="font-medium">Cancel this sale?</p>
+                <p className="text-xs text-muted-foreground">The pieces go back into stock and any debt from this sale is removed. The receipt stays in the records, marked cancelled.</p>
+                <Input autoFocus placeholder="Why? e.g. entered twice, customer returned it" value={cancelReason} onChange={e => setCancelReason(e.target.value)} />
+                <div className="flex justify-end gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => setCancelReason(null)}>Keep sale</Button>
+                  <Button size="sm" variant="destructive" disabled={!cancelReason.trim() || voidSale.isPending}
+                    onClick={async () => {
+                      await voidSale.mutateAsync({ saleId: receipt.id, reason: cancelReason });
+                      setCancelReason(null);
+                      setReceipt(null);
+                    }}>
+                    {voidSale.isPending ? 'Cancelling…' : 'Cancel sale'}
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Customer</span>
               <span className="font-medium">{receipt.customer_name || 'Walk-in'}</span>
@@ -603,7 +635,7 @@ export default function Sales() {
                 </div>
               )}
             </div>
-            <div className="flex justify-center"><PaymentBadge status={receipt.payment_status} /></div>
+            {!receipt.voided_at && <div className="flex justify-center"><PaymentBadge status={receipt.payment_status} /></div>}
           </div>
         )}
       </FormDialog>

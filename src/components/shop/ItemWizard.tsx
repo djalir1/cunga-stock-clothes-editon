@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { ArrowLeft, ArrowRight, Check, Minus, Plus } from 'lucide-react';
+import { MoneyInput } from './MoneyInput';
 
 const STEPS = ['Details', 'Colours', 'Sizes', 'How many'] as const;
 const NONE = '';
@@ -159,12 +160,12 @@ export function ItemWizard({ open, onOpenChange }: { open: boolean; onOpenChange
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Selling price (RWF)</Label>
-              <Input type="number" inputMode="numeric" min="0" placeholder="e.g. 15000" value={price} onChange={e => setPrice(e.target.value)} />
+              <Label>Selling price</Label>
+              <MoneyInput placeholder="e.g. 15,000" value={price} onChange={setPrice} />
             </div>
             <div className="space-y-2">
-              <Label>Bought for (RWF) <span className="text-muted-foreground font-normal">optional</span></Label>
-              <Input type="number" inputMode="numeric" min="0" placeholder="Cost price" value={cost} onChange={e => setCost(e.target.value)} />
+              <Label>Bought for <span className="text-muted-foreground font-normal">optional</span></Label>
+              <MoneyInput placeholder="Cost price" value={cost} onChange={setCost} />
             </div>
           </div>
           <p className="text-xs text-muted-foreground -mt-2">Same price for every colour and size. You can still agree a different price at the till.</p>

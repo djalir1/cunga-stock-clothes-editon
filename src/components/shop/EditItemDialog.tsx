@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { MoneyInput } from './MoneyInput';
 
 const priceOrNull = (v: string) => (v.trim() === '' ? null : Number(v));
 
@@ -26,6 +27,8 @@ export function EditItemDialog({ item, onClose }: { item: StockItemWithCategory 
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [perVariant, setPerVariant] = useState(false);
   const [price, setPrice] = useState('');
+  const [cost, setCost] = useState('');
+  const [initialCost, setInitialCost] = useState('');
   const [variantPrices, setVariantPrices] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
@@ -40,6 +43,9 @@ export function EditItemDialog({ item, onClose }: { item: StockItemWithCategory 
     setPhotoUrl(item.image_url);
     setPerVariant(!allSame);
     setPrice(allSame && prices[0] !== null && prices[0] !== undefined ? String(prices[0]) : '');
+    const costs = item.variants.map(v => v.cost_price).filter(c => c !== null);
+    setCost(costs.length ? String(costs[0]) : '');
+    setInitialCost(costs.length ? String(costs[0]) : '');
     setVariantPrices(Object.fromEntries(item.variants.map(v => [v.id, v.default_price === null ? '' : String(v.default_price)])));
   }, [item]);
 
@@ -57,8 +63,8 @@ export function EditItemDialog({ item, onClose }: { item: StockItemWithCategory 
         image_url,
       });
       await setPrices.mutateAsync(perVariant
-        ? { itemId: item.id, variantPrices: item.variants.map(v => ({ id: v.id, price: priceOrNull(variantPrices[v.id] ?? '') })) }
-        : { itemId: item.id, price: priceOrNull(price) });
+        ? { itemId: item.id, cost: cost === initialCost ? undefined : priceOrNull(cost), variantPrices: item.variants.map(v => ({ id: v.id, price: priceOrNull(variantPrices[v.id] ?? '') })) }
+        : { itemId: item.id, cost: cost === initialCost ? undefined : priceOrNull(cost), price: priceOrNull(price) });
       if (item.image_url && item.image_url !== image_url) await deleteItemImage(item.image_url);
       onClose();
     } catch (e) {
@@ -93,7 +99,7 @@ export function EditItemDialog({ item, onClose }: { item: StockItemWithCategory 
 
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <Label>Selling price (RWF)</Label>
+          <Label>Selling price</Label>
           {item && item.variants.length > 1 && (
             <label className="flex items-center gap-2 text-xs text-muted-foreground">
               Different price per size / colour
@@ -102,18 +108,25 @@ export function EditItemDialog({ item, onClose }: { item: StockItemWithCategory 
           )}
         </div>
         {!perVariant ? (
-          <Input type="number" inputMode="numeric" min="0" placeholder="Same for every size and colour" value={price} onChange={e => setPrice(e.target.value)} />
+          <MoneyInput placeholder="Same for every size and colour" value={price} onChange={setPrice} />
         ) : (
           <div className="rounded-lg border border-border divide-y divide-border">
             {item?.variants.map(v => (
               <div key={v.id} className="flex items-center justify-between gap-3 px-3 py-2">
                 <OptionTag size={v.size} color={v.color} className="text-sm" />
-                <Input type="number" inputMode="numeric" min="0" className="h-9 w-32" placeholder="Price"
-                  value={variantPrices[v.id] ?? ''} onChange={e => setVariantPrices(p => ({ ...p, [v.id]: e.target.value }))} />
+                <div className="w-40">
+                  <MoneyInput className="h-9" placeholder="Price"
+                    value={variantPrices[v.id] ?? ''} onChange={val => setVariantPrices(p => ({ ...p, [v.id]: val }))} />
+                </div>
               </div>
             ))}
           </div>
         )}
+      </div>
+
+      <div className="space-y-2">
+        <Label>Bought for (cost each) <span className="text-muted-foreground font-normal">used to work out profit</span></Label>
+        <MoneyInput placeholder="What you paid the supplier per piece" value={cost} onChange={setCost} />
       </div>
 
       <div className="flex items-center gap-3">

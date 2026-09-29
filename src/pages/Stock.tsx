@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Plus, Search, Trash2, ShieldCheck, RefreshCcw, Layers, ShoppingCart, Pencil, MoreVertical, PackagePlus, Palette, Shirt } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { MoneyInput } from '@/components/shop/MoneyInput';
 
 /** Size / colour picker used by the Sell dialog */
 function VariantSelect({ variants, value, onChange }: {
@@ -413,10 +414,10 @@ export default function Stock() {
               onChange={(e) => setSellForm({ ...sellForm, quantity: e.target.value })} />
           </div>
           <div className="space-y-2">
-            <Label>Price per piece (RWF)</Label>
-            <Input type="number" min="0" inputMode="numeric"
+            <Label>Price per piece</Label>
+            <MoneyInput
               placeholder={sellVariant?.default_price ? `Usual: ${sellVariant.default_price.toLocaleString('en-US')}` : 'Agreed price'}
-              value={sellForm.unitPrice} onChange={(e) => setSellForm({ ...sellForm, unitPrice: e.target.value })} />
+              value={sellForm.unitPrice} onChange={unitPrice => setSellForm({ ...sellForm, unitPrice })} />
             {sellVariant && sellVariant.default_price !== null && sellForm.unitPrice === '' && (
               <button type="button" className="text-xs text-primary font-medium"
                 onClick={() => setSellForm({ ...sellForm, unitPrice: String(sellVariant.default_price) })}>

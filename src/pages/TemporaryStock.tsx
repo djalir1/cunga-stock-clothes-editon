@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTemporaryStock, TempStockCheckout, CheckoutStatus } from '@/hooks/useTemporaryStock';
 import { useStockItems } from '@/hooks/useStockItems';
 import { formatRWF } from '@/lib/format';
+import { MoneyInput } from '@/components/shop/MoneyInput';
 import { FormDialog } from '@/components/shop/FormDialog';
 import { CustomerPicker, type CustomerChoice } from '@/components/shop/CustomerPicker';
 import { VariantPicker, type PickedVariant } from '@/components/shop/VariantPicker';
@@ -634,9 +635,9 @@ function TemporaryStockContent() {
         {showMore && (
           <div className="grid grid-cols-2 gap-4 animate-fade-in">
             <div className="space-y-2">
-              <Label>Deposit Paid (RWF)</Label>
-              <Input type="number" min="0" placeholder="0" value={checkoutForm.deposit}
-                onChange={e => setCheckoutForm({ ...checkoutForm, deposit: e.target.value })} />
+              <Label>Deposit paid</Label>
+              <MoneyInput placeholder="0" value={checkoutForm.deposit}
+                onChange={deposit => setCheckoutForm({ ...checkoutForm, deposit })} />
             </div>
             <div className="space-y-2">
               <Label>Date Taken</Label>
@@ -673,15 +674,15 @@ function TemporaryStockContent() {
       >
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Price per piece (RWF)</Label>
-            <Input type="number" min="0" placeholder="Agreed price" autoFocus value={sellForm.unitPrice}
-              onChange={e => setSellForm({ ...sellForm, unitPrice: e.target.value })} />
+            <Label>Price per piece</Label>
+            <MoneyInput placeholder="Agreed price" autoFocus value={sellForm.unitPrice}
+              onChange={unitPrice => setSellForm({ ...sellForm, unitPrice })} />
           </div>
           <div className="space-y-2">
-            <Label>Amount Paid (RWF)</Label>
-            <Input type="number" min="0" placeholder={sellTotal !== null ? `Full: ${sellTotal.toLocaleString('en-US')}` : ''}
+            <Label>Amount paid</Label>
+            <MoneyInput placeholder={sellTotal !== null ? `Full: ${sellTotal.toLocaleString('en-US')}` : ''}
               value={sellForm.amountPaid}
-              onChange={e => setSellForm({ ...sellForm, amountPaid: e.target.value })} />
+              onChange={amountPaid => setSellForm({ ...sellForm, amountPaid })} />
           </div>
         </div>
         {selling?.deposit ? (

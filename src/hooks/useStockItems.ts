@@ -212,13 +212,19 @@ export function useStockItems() {
 
   /** One price for every size and colour of the item (the usual case), or per variant */
   const setPrices = useMutation({
-    mutationFn: async ({ itemId, price, variantPrices }: {
+    mutationFn: async ({ itemId, price, cost, variantPrices }: {
       itemId: string;
       price?: number | null;
+      /** cost price for every size and colour */
+      cost?: number | null;
       variantPrices?: { id: string; price: number | null }[];
     }) => {
       if (price !== undefined) {
         const { error } = await supabase.from('stock_variants').update({ default_price: price }).eq('item_id', itemId);
+        if (error) throw error;
+      }
+      if (cost !== undefined) {
+        const { error } = await supabase.from('stock_variants').update({ cost_price: cost }).eq('item_id', itemId);
         if (error) throw error;
       }
       for (const v of variantPrices ?? []) {

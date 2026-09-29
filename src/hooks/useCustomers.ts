@@ -36,7 +36,7 @@ export function useCustomers() {
     queryFn: async () => {
       const [{ data: customers, error }, { data: sales, error: salesError }, { data: debts, error: debtsError }] = await Promise.all([
         supabase.from('customers').select('id, name, phone, notes, created_at').order('name'),
-        supabase.from('sales').select('customer_id, sold_at, total').not('customer_id', 'is', null),
+        supabase.from('sales').select('customer_id, sold_at, total').not('customer_id', 'is', null).is('voided_at', null),
         supabase.from('debt_balances').select('customer_id, balance').gt('balance', 0),
       ]);
       if (error) throw error;
@@ -106,7 +106,7 @@ export function useCustomerSales(customerId: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('sales')
-        .select('id, receipt_no, sold_at, total, amount_paid, payment_status, sale_items(item_name, size, color, quantity, set_name)')
+        .select('id, receipt_no, sold_at, total, amount_paid, payment_status, voided_at, sale_items(item_name, size, color, quantity, set_name)')
         .eq('customer_id', customerId!)
         .order('sold_at', { ascending: false })
         .limit(50);

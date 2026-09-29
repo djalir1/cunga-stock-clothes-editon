@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Layers, Pencil, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react';
+import { MoneyInput } from './MoneyInput';
 
 const empty = { name: '', category_id: null as string | null, usual_price: '', part_ids: [] as string[] };
 
@@ -164,8 +165,8 @@ export function SetsPanel({ canEdit, createSignal }: { canEdit: boolean; createS
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Price for the full set (RWF) <span className="text-muted-foreground font-normal">optional</span></Label>
-              <Input type="number" inputMode="numeric" min="0" placeholder="e.g. 45000" value={editing.usual_price} onChange={e => setEditing({ ...editing, usual_price: e.target.value })} />
+              <Label>Price for the full set <span className="text-muted-foreground font-normal">optional</span></Label>
+              <MoneyInput placeholder="e.g. 45,000" value={editing.usual_price} onChange={usual_price => setEditing({ ...editing, usual_price })} />
             </div>
           </>
         )}

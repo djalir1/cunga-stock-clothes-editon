@@ -47,6 +47,8 @@ export interface ReceiptSale {
   /** Balance still owed on this sale, if any (live from the debt) */
   balance?: number | null;
   due_date?: string | null;
+  /** Set when the owner cancelled the sale */
+  voided_at?: string | null;
 }
 
 const METHOD_LABELS: Record<string, string> = {
@@ -61,7 +63,7 @@ function buildReceipt(sale: ReceiptSale): jsPDF {
   const margin = 5;
   const lineGap = 4.2;
   const groups = groupReceiptLines(sale.lines);
-  const height = 78 + sale.lines.length * 9 + groups.filter(g => g.set_name).length * 5 + (sale.payment_status !== 'paid' ? 14 : 0);
+  const height = 78 + sale.lines.length * 9 + groups.filter(g => g.set_name).length * 5 + (sale.payment_status !== 'paid' ? 14 : 0) + (sale.voided_at ? 6 : 0);
   const doc = new jsPDF({ unit: 'mm', format: [width, height] });
   const right = width - margin;
   let y = 9;
@@ -90,6 +92,11 @@ function buildReceipt(sale: ReceiptSale): jsPDF {
   y += 2;
   rule();
 
+  if (sale.voided_at) {
+    doc.setTextColor(200, 30, 30);
+    center('*** CANCELLED ***', 11, true);
+    doc.setTextColor(20);
+  }
   doc.setFontSize(8);
   row(`Receipt ${receiptNumber(sale.receipt_no)}`, format(new Date(sale.sold_at), 'dd MMM yyyy HH:mm'));
   if (sale.customer_name) row('Customer', sale.customer_name);

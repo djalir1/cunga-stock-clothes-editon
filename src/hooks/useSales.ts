@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { ReceiptSale } from '@/lib/receipt';
-import { friendlyError } from '@/lib/format';
+import { formatRWF, friendlyError } from '@/lib/format';
 
 export type PaymentMethod = 'cash' | 'mobile_money' | 'bank' | 'other';
 
@@ -18,6 +18,8 @@ export interface SaleWithLines extends ReceiptSale {
   id: string;
   customer_id: string | null;
   source: string;
+  voided_at: string | null;
+  void_reason: string | null;
 }
 
 export interface NewSale {
@@ -30,10 +32,14 @@ export interface NewSale {
 }
 
 const SALE_SELECT = `
-  id, receipt_no, sold_at, customer_id, customer_name, total, amount_paid, payment_status, payment_method, source,
+  id, receipt_no, sold_at, customer_id, customer_name, total, amount_paid, payment_status, payment_method, source, voided_at, void_reason,
   sale_items(item_name, size, color, quantity, unit_price, set_name),
   debts(id, due_date)
 `;
+
+/** sales → debts is one-to-one (sale_id is unique), so PostgREST returns an object or null, not a list */
+type DebtRef = { id: string; due_date: string | null } | { id: string; due_date: string | null }[] | null;
+const dueDateOf = (debts: DebtRef) => (Array.isArray(debts) ? debts[0]?.due_date : debts?.due_date) ?? null;
 
 export function useSales(limit = 30) {
   const queryClient = useQueryClient();
@@ -61,7 +67,7 @@ export function useSales(limit = 30) {
       return data.map(s => ({
         ...s,
         lines: s.sale_items,
-        due_date: s.debts[0]?.due_date ?? null,
+        due_date: dueDateOf(s.debts as DebtRef),
       }));
     },
   });
@@ -82,7 +88,7 @@ export function useSales(limit = 30) {
 
       const { data, error: fetchError } = await supabase.from('sales').select(SALE_SELECT).eq('id', saleId).single();
       if (fetchError) throw fetchError;
-      return { ...data, lines: data.sale_items, due_date: data.debts[0]?.due_date ?? null } as SaleWithLines;
+      return { ...data, lines: data.sale_items, due_date: dueDateOf(data.debts as DebtRef) } as SaleWithLines;
     },
     onSuccess: () => {
       ['sales', 'stock-items', 'stock-movements', 'dashboard-stats', 'customers', 'debts'].forEach(key =>
@@ -91,7 +97,25 @@ export function useSales(limit = 30) {
     onError: (e: Error) => toast({ title: 'Sale not saved', description: friendlyError(e), variant: 'destructive' }),
   });
 
-  return { recentSales: recent.data ?? [], isLoading: recent.isLoading, recordSale };
+  /** Owner only: cancels a sale, puts the pieces back in stock and removes its debt */
+  const voidSale = useMutation({
+    mutationFn: async ({ saleId, reason }: { saleId: string; reason: string }) => {
+      const { data, error } = await supabase.rpc('void_sale', { p_sale_id: saleId, p_reason: reason });
+      if (error) throw error;
+      return Number(data);
+    },
+    onSuccess: refund => {
+      ['sales', 'stock-items', 'stock-movements', 'dashboard-stats', 'customers', 'debts'].forEach(key =>
+        queryClient.invalidateQueries({ queryKey: [key] }));
+      toast({
+        title: 'Sale cancelled',
+        description: refund > 0 ? `Pieces are back in stock. Give the customer back ${formatRWF(refund)}.` : 'Pieces are back in stock.',
+      });
+    },
+    onError: (e: Error) => toast({ title: 'Not cancelled', description: friendlyError(e), variant: 'destructive' }),
+  });
+
+  return { recentSales: recent.data ?? [], isLoading: recent.isLoading, recordSale, voidSale };
 }
 
 export interface TodaySummary {
@@ -110,7 +134,7 @@ export function useTodaySummary() {
       const start = new Date();
       start.setHours(0, 0, 0, 0);
       const [{ data: sales, error }, { data: debts, error: debtsError }] = await Promise.all([
-        supabase.from('sales').select('total, amount_paid, sale_items(quantity)').gte('sold_at', start.toISOString()),
+        supabase.from('sales').select('total, amount_paid, sale_items(quantity)').gte('sold_at', start.toISOString()).is('voided_at', null),
         supabase.from('debt_balances').select('balance').gt('balance', 0),
       ]);
       if (error) throw error;

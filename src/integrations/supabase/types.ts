@@ -298,6 +298,125 @@ export type Database = {
         }
         Relationships: []
       }
+      purchase_order_lines: {
+        Row: {
+          color: string | null
+          id: string
+          item_id: string | null
+          item_name: string
+          line_total: number | null
+          po_id: string
+          quantity_ordered: number
+          quantity_received: number
+          size: string | null
+          unit_cost: number | null
+        }
+        Insert: {
+          color?: string | null
+          id?: string
+          item_id?: string | null
+          item_name: string
+          line_total?: never
+          po_id: string
+          quantity_ordered: number
+          quantity_received?: number
+          size?: string | null
+          unit_cost?: number | null
+        }
+        Update: {
+          color?: string | null
+          id?: string
+          item_id?: string | null
+          item_name?: string
+          line_total?: never
+          po_id?: string
+          quantity_ordered?: number
+          quantity_received?: number
+          size?: string | null
+          unit_cost?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_lines_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_lines_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "stock_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_orders: {
+        Row: {
+          amount_paid: number
+          created_at: string
+          created_by: string | null
+          expected_on: string | null
+          id: string
+          notes: string | null
+          ordered_on: string
+          po_no: number
+          received_on: string | null
+          shipping_cost: number
+          status: string
+          supplier_id: string | null
+          supplier_name: string | null
+          tracking_ref: string | null
+          transport: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount_paid?: number
+          created_at?: string
+          created_by?: string | null
+          expected_on?: string | null
+          id?: string
+          notes?: string | null
+          ordered_on?: string
+          po_no?: never
+          received_on?: string | null
+          shipping_cost?: number
+          status?: string
+          supplier_id?: string | null
+          supplier_name?: string | null
+          tracking_ref?: string | null
+          transport?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount_paid?: number
+          created_at?: string
+          created_by?: string | null
+          expected_on?: string | null
+          id?: string
+          notes?: string | null
+          ordered_on?: string
+          po_no?: never
+          received_on?: string | null
+          shipping_cost?: number
+          status?: string
+          supplier_id?: string | null
+          supplier_name?: string | null
+          tracking_ref?: string | null
+          transport?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_orders_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sale_items: {
         Row: {
           category_name: string | null
@@ -309,6 +428,7 @@ export type Database = {
           sale_id: string
           set_name: string | null
           size: string | null
+          unit_cost: number | null
           unit_price: number
           variant_id: string | null
         }
@@ -322,6 +442,7 @@ export type Database = {
           sale_id: string
           set_name?: string | null
           size?: string | null
+          unit_cost?: number | null
           unit_price: number
           variant_id?: string | null
         }
@@ -335,6 +456,7 @@ export type Database = {
           sale_id?: string
           set_name?: string | null
           size?: string | null
+          unit_cost?: number | null
           unit_price?: number
           variant_id?: string | null
         }
@@ -370,6 +492,9 @@ export type Database = {
           sold_at: string
           source: string
           total: number
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
         }
         Insert: {
           receipt_no?: never
@@ -385,6 +510,9 @@ export type Database = {
           sold_at?: string
           source?: string
           total: number
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Update: {
           receipt_no?: never
@@ -400,6 +528,9 @@ export type Database = {
           sold_at?: string
           source?: string
           total?: number
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Relationships: [
           {
@@ -432,6 +563,36 @@ export type Database = {
           hex?: string
           id?: string
           name?: string
+        }
+        Relationships: []
+      }
+      suppliers: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          location: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          location?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          location?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
         }
         Relationships: []
       }
@@ -785,6 +946,22 @@ export type Database = {
         }
         Returns: string
       }
+      create_purchase_order: {
+        Args: {
+          p_amount_paid?: number
+          p_expected_on?: string
+          p_lines: Json
+          p_notes?: string
+          p_shipping_cost?: number
+          p_status?: string
+          p_supplier_id?: string
+          p_supplier_name?: string
+          p_supplier_phone?: string
+          p_tracking_ref?: string
+          p_transport?: string
+        }
+        Returns: string
+      }
       create_stock_item: {
         Args: {
           p_category_id: string
@@ -809,6 +986,10 @@ export type Database = {
         }
         Returns: number
       }
+      receive_purchase_order: {
+        Args: { p_lines: Json; p_po_id: string }
+        Returns: string
+      }
       record_debt_payment: {
         Args: {
           p_amount: number
@@ -831,6 +1012,10 @@ export type Database = {
           p_source?: string
         }
         Returns: string
+      }
+      void_sale: {
+        Args: { p_reason: string; p_sale_id: string }
+        Returns: number
       }
       restock_variant: {
         Args: { p_notes?: string; p_quantity: number; p_variant_id: string }

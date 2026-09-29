@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CheckCircle2 } from 'lucide-react';
+import { MoneyInput } from './MoneyInput';
 
 export interface PaymentTarget {
   customerId: string;
@@ -57,9 +58,8 @@ export function PaymentDialog({ target, onClose }: { target: PaymentTarget | nul
       }
     >
       <div className="space-y-2">
-        <Label>How much did they pay? (RWF)</Label>
-        <Input type="number" inputMode="numeric" min="0" autoFocus placeholder="0" className="h-12 text-lg font-semibold"
-          value={amount} onChange={e => setAmount(e.target.value)} />
+        <Label>How much did they pay?</Label>
+        <MoneyInput autoFocus placeholder="0" className="h-12 text-lg font-semibold" value={amount} onChange={setAmount} />
         <div className="flex flex-wrap gap-1.5">
           <Button type="button" size="sm" variant={value === max ? 'default' : 'outline'} className="h-8" onClick={() => setAmount(String(max))}>
             Everything · {formatRWF(max)}
