@@ -16,7 +16,7 @@ const empty = { name: '', tagline: '', location: '', phone: '', email: '', tin: 
 
 /** Shop name, logo and contacts that print on every receipt and report. Owner edits; others see. */
 export function ShopProfile() {
-  const { isOwner } = useAuth();
+  const { isManager } = useAuth();
   const { settings, save } = useShopSettings();
   const { toast } = useToast();
   const [form, setForm] = useState(empty);
@@ -37,7 +37,7 @@ export function ShopProfile() {
   const field = (key: keyof typeof empty, label: string, placeholder: string, type = 'text') => (
     <div className="space-y-2">
       <Label>{label}</Label>
-      <Input type={type} value={form[key]} placeholder={placeholder} disabled={!isOwner}
+      <Input type={type} value={form[key]} placeholder={placeholder} disabled={!isManager}
         onChange={e => setForm({ ...form, [key]: e.target.value })} />
     </div>
   );
@@ -75,13 +75,13 @@ export function ShopProfile() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><Store className="w-5 h-5 text-primary" /> Shop profile</CardTitle>
         <CardDescription>
-          Your shop's name, logo and contacts — printed on every receipt and report.{!isOwner && ' Only the owner can change them.'}
+          Your shop's name, logo and contacts — printed on every receipt and report.{!isManager && ' Only the owner or an admin can change them.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <Label>Logo</Label>
-          {isOwner ? (
+          {isManager ? (
             <PhotoInput url={logoUrl} file={logoFile} onFile={setLogoFile} onRemove={() => { setLogoFile(null); setLogoUrl(null); }} />
           ) : logoUrl ? <img src={logoUrl} alt="Shop logo" className="h-20 rounded-lg border border-border object-contain bg-white p-1" /> : <p className="text-sm text-muted-foreground">No logo</p>}
         </div>
@@ -95,7 +95,7 @@ export function ShopProfile() {
         </div>
         {field('receipt_footer', 'Message at the bottom of receipts', 'e.g. Murakoze! Goods sold are exchangeable within 3 days.')}
         <div className="flex flex-wrap gap-2">
-          {isOwner && <Button onClick={submit} disabled={!form.name.trim() || saving}>{saving ? 'Saving…' : 'Save shop profile'}</Button>}
+          {isManager && <Button onClick={submit} disabled={!form.name.trim() || saving}>{saving ? 'Saving…' : 'Save shop profile'}</Button>}
           <Button variant="outline" className="gap-2" onClick={sample}><FileDown className="w-4 h-4" /> Preview a receipt</Button>
         </div>
         <p className="text-xs text-muted-foreground">Receipts also show a small “Powered by Cunga Stock” mark at the bottom.</p>

@@ -13,7 +13,7 @@ import { ArrowLeftRight } from 'lucide-react';
  * when a customer pays in dollars or euros (the till can still change the rate for one payment).
  */
 export function ExchangeRates() {
-  const { isOwner } = useAuth();
+  const { isManager } = useAuth();
   const { settings, saveRates } = useShopSettings();
   const [usd, setUsd] = useState('');
   const [eur, setEur] = useState('');
@@ -32,25 +32,25 @@ export function ExchangeRates() {
         <CardTitle className="flex items-center gap-2"><ArrowLeftRight className="w-5 h-5" /> Exchange rates</CardTitle>
         <CardDescription>
           Prices, debts and reports are always in FRW. When a customer pays in dollars or euros, the till uses these rates
-          to show how much it is worth in FRW{isOwner ? '. Update them when the rate changes.' : '. Only the owner can change them.'}
+          to show how much it is worth in FRW{isManager ? '. Update them when the rate changes.' : '. Only the owner or an admin can change them.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label>1 US Dollar (USD) =</Label>
-            <MoneyInput value={usd} onChange={setUsd} disabled={!isOwner} />
+            <MoneyInput value={usd} onChange={setUsd} disabled={!isManager} />
           </div>
           <div className="space-y-1.5">
             <Label>1 Euro (EUR) =</Label>
-            <MoneyInput value={eur} onChange={setEur} disabled={!isOwner} />
+            <MoneyInput value={eur} onChange={setEur} disabled={!isManager} />
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs text-muted-foreground">
             {settings?.rates_updated_at && <>Last changed {formatDistanceToNow(new Date(settings.rates_updated_at), { addSuffix: true })}.</>}
           </p>
-          {isOwner && (
+          {isManager && (
             <Button onClick={() => saveRates.mutate({ usd_rate: Number(usd), eur_rate: Number(eur) })}
               disabled={!changed || !(Number(usd) > 0) || !(Number(eur) > 0) || saveRates.isPending}>
               {saveRates.isPending ? 'Saving…' : 'Save rates'}

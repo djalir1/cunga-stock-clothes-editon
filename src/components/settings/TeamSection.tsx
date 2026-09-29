@@ -17,9 +17,11 @@ interface Member {
   role: AppRole | null;
 }
 
-/** Owner-only: give new accounts access and change team roles. */
+/** Owner or admin: give new accounts access and change team roles. */
 export function TeamSection() {
-  const { user } = useAuth();
+  const { user, role: myRole } = useAuth();
+  // Only an admin can give, change or remove the admin role
+  const iAmAdmin = myRole === 'admin';
   const queryClient = useQueryClient();
 
   const { data: members = [], isLoading } = useQuery<Member[]>({
@@ -63,7 +65,7 @@ export function TeamSection() {
           )}
         </CardTitle>
         <CardDescription>
-          New accounts can't use the app until you choose a role for them. Storekeepers can sell and manage stock. Supervisors can see everything and make reports, but can't change anything. Developers are the people who build the app; their accounts can't be changed here.
+          New accounts can't use the app until you choose a role for them. Storekeepers can sell and manage stock. Supervisors can see everything and make reports, but can't change anything. Admins have the same access as the owner; only an admin can change an admin account.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -85,7 +87,7 @@ export function TeamSection() {
                     {m.user_id === user?.id && <span className="text-muted-foreground font-normal"> (you)</span>}
                   </TableCell>
                   <TableCell>
-                    {m.user_id === user?.id || m.role === 'admin' ? (
+                    {m.user_id === user?.id || (m.role === 'admin' && !iAmAdmin) ? (
                       <Badge variant="outline">{m.role ? ROLE_LABELS[m.role] : 'No access'}</Badge>
                     ) : (
                       <Select
@@ -99,6 +101,7 @@ export function TeamSection() {
                           <SelectItem value="storekeeper">{ROLE_LABELS.storekeeper}</SelectItem>
                           <SelectItem value="supervisor">{ROLE_LABELS.supervisor}</SelectItem>
                           <SelectItem value="owner">{ROLE_LABELS.owner}</SelectItem>
+                          {iAmAdmin && <SelectItem value="admin">{ROLE_LABELS.admin}</SelectItem>}
                         </SelectContent>
                       </Select>
                     )}

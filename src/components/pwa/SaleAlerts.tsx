@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 type Kind = { key: keyof NotificationPrefs; label: string; hint: string };
 
-/** Every kind of alert, grouped the way the shop works. Also used by the developers' overview. */
+/** Every kind of alert, grouped the way the shop works. Also used by the admins' overview. */
 export const ALERT_GROUPS: { title: string; kinds: Kind[] }[] = [
   {
     title: 'Selling',
@@ -151,7 +151,7 @@ export function SupervisorAlertsSection() {
 const DISMISS_KEY = 'cunga-alerts-card-dismissed';
 
 /**
- * Owner / developers / supervisors: a notification on this phone for everything that happens
+ * Owner / admins / supervisors: a notification on this phone for everything that happens
  * in the shop, even when the app is closed. `compact` = the dismissable dashboard card.
  */
 export function SaleAlerts({ compact = false }: { compact?: boolean }) {

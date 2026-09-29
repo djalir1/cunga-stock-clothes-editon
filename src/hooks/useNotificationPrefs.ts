@@ -26,7 +26,7 @@ export const DEFAULT_PREFS: NotificationPrefs = {
   stock_changes: true, payments: true, customers: true, new_accounts: true,
 };
 
-/** Which phone alerts the owner / developers wants (everything is on until they change it). */
+/** Which phone alerts the owner / admins / supervisors want (everything is on until they change it). */
 export function useNotificationPrefs() {
   const { user } = useAuth();
   const queryClient = useQueryClient();

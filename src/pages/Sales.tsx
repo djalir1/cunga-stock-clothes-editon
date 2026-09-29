@@ -45,7 +45,7 @@ function splitSetPrice(total: number, parts: Picked[]): number[] {
 }
 
 export default function Sales() {
-  const { canEdit, isOwner } = useAuth();
+  const { canEdit, isManager } = useAuth();
   const { items, isLoading: itemsLoading } = useStockItems();
   const { sets } = useItemSets();
   const { recentSales, isLoading: salesLoading, recordSale, voidSale, fetchSale } = useSales();
@@ -621,7 +621,7 @@ export default function Sales() {
         description={receipt && <>{format(new Date(receipt.sold_at), 'dd MMM yyyy · HH:mm')}{nameOf(receipt.created_by) && <> · sold by <b className="text-foreground">{nameOf(receipt.created_by)}</b></>}</>}
         footer={receipt && (
           <>
-            {isOwner && !receipt.voided_at && cancelReason === null && (
+            {isManager && !receipt.voided_at && cancelReason === null && (
               <Button variant="ghost" className="gap-2 text-destructive hover:bg-destructive/10 sm:mr-auto" onClick={() => setCancelReason('')}>
                 <Ban className="w-4 h-4" /> Cancel sale
               </Button>

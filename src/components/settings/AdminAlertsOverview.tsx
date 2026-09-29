@@ -18,10 +18,10 @@ interface Person {
 }
 
 /**
- * Developers only: who gets phone alerts, on which devices, and which kinds
+ * Admins only: who gets phone alerts, on which devices, and which kinds
  * each person has switched on or off.
  */
-export function DeveloperAlertsOverview() {
+export function AdminAlertsOverview() {
   const { data, isLoading, refetch, isFetching } = useQuery<{ supervisor_alerts: string[]; people: Person[] }>({
     queryKey: ['notification-overview'],
     queryFn: async () => {
@@ -39,14 +39,14 @@ export function DeveloperAlertsOverview() {
         <CardTitle className="flex items-center gap-2">
           <Code2 className="w-5 h-5" />
           Alerts overview
-          <Badge variant="outline">Developers only</Badge>
+          <Badge variant="outline">Admins only</Badge>
           <button className="ml-auto text-muted-foreground hover:text-foreground" onClick={() => refetch()} aria-label="Refresh">
             <RefreshCcw className={cn('w-4 h-4', isFetching && 'animate-spin')} />
           </button>
         </CardTitle>
         <CardDescription>
           Who receives phone alerts, on which devices, and which alerts each person has turned on or off.
-          The owner and developers can receive every alert; supervisors only the ones the owner allows; storekeepers none.
+          The owner and admins can receive every alert; supervisors only the ones the owner allows; storekeepers none.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

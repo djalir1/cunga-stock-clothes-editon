@@ -28,10 +28,10 @@ import { TeamSection } from '@/components/settings/TeamSection';
 import { SaleAlerts, SupervisorAlertsSection } from '@/components/pwa/SaleAlerts';
 import { ShopProfile } from '@/components/settings/ShopProfile';
 import { ExchangeRates } from '@/components/settings/ExchangeRates';
-import { DeveloperAlertsOverview } from '@/components/settings/DeveloperAlertsOverview';
+import { AdminAlertsOverview } from '@/components/settings/AdminAlertsOverview';
 
 export default function Settings() {
-  const { user, profile, role, isOwner, signOut } = useAuth();
+  const { user, profile, role, isManager, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [isSaving, setIsSaving] = useState(false);
@@ -155,11 +155,11 @@ export default function Settings() {
 
       {(role === 'owner' || role === 'admin' || role === 'supervisor') && <SaleAlerts />}
 
-      {role === 'admin' && <DeveloperAlertsOverview />}
+      {role === 'admin' && <AdminAlertsOverview />}
 
-      {isOwner && <TeamSection />}
+      {isManager && <TeamSection />}
 
-      {isOwner && <SupervisorAlertsSection />}
+      {isManager && <SupervisorAlertsSection />}
 
       {/* About the app */}
       <Card>

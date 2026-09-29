@@ -6,7 +6,7 @@ import { friendlyError } from '@/lib/format';
 import { channelName } from '@/lib/realtime';
 import { applyShopSettings, type ShopSettingsRow } from '@/config/shop';
 
-/** Shop name, logo, contacts — used on receipts and reports. Only the owner can change them. */
+/** Shop name, logo, contacts — used on receipts and reports. Only the owner or an admin can change them. */
 export function useShopSettings() {
   const queryClient = useQueryClient();
   const { toast } = useToast();

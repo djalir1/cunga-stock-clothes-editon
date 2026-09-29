@@ -12,6 +12,8 @@ interface AuthContextType {
   /** Owner and storekeeper can change shop data; admin is view-only */
   canEdit: boolean;
   isOwner: boolean;
+  /** Owner or admin: team, shop settings, exchange rates, cancelling sales */
+  isManager: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
@@ -117,8 +119,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         session,
         profile,
         role,
-        canEdit: role === 'owner' || role === 'storekeeper',
+        canEdit: role === 'owner' || role === 'admin' || role === 'storekeeper',
         isOwner: role === 'owner',
+        isManager: role === 'owner' || role === 'admin',
         loading,
         signIn,
         signUp,
