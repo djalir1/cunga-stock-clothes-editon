@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Category } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { friendlyError } from '@/lib/format';
 
 export function useCategories() {
   const queryClient = useQueryClient();
@@ -41,7 +42,7 @@ export function useCategories() {
     onError: (error) => {
       toast({
         title: 'Error',
-        description: error.message,
+        description: friendlyError(error),
         variant: 'destructive',
       });
     },
@@ -69,7 +70,7 @@ export function useCategories() {
     onError: (error) => {
       toast({
         title: 'Error',
-        description: error.message,
+        description: friendlyError(error),
         variant: 'destructive',
       });
     },
@@ -94,7 +95,7 @@ export function useCategories() {
     onError: (error) => {
       toast({
         title: 'Error',
-        description: error.message,
+        description: friendlyError(error),
         variant: 'destructive',
       });
     },

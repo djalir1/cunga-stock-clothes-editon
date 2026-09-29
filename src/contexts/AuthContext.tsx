@@ -26,70 +26,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 🔥 THIS is the key fix
-  const manualLogout = useRef(false);
+  // Which user's data we last loaded, so token refreshes don't refetch or flash the loader
+  const loadedFor = useRef<string | null>(null);
 
   const fetchUserData = async (userId: string) => {
-    try {
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      setProfile(profileData ?? null);
-
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      setRole((roleData?.role as AppRole) ?? null);
-    } catch (err) {
-      console.error('User data error:', err);
-      setProfile(null);
-      setRole(null);
-    }
+    const [{ data: profileData, error: profileError }, { data: roleData, error: roleError }] = await Promise.all([
+      supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle(),
+      supabase.from('user_roles').select('role').eq('user_id', userId).maybeSingle(),
+    ]);
+    if (profileError) console.error('Profile load error:', profileError);
+    // A failed lookup must not look like "no role yet" (that shows the waiting-for-approval screen)
+    if (roleError) throw roleError;
+    setProfile(profileData ?? null);
+    setRole((roleData?.role as AppRole) ?? null);
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
+    let cancelled = false;
 
-        // INITIAL LOAD / LOGIN
-        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-          manualLogout.current = false;
+    const applySession = async (currentSession: Session | null) => {
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
 
-          setSession(currentSession);
-          setUser(currentSession?.user ?? null);
+      if (!currentSession?.user) {
+        loadedFor.current = null;
+        setProfile(null);
+        setRole(null);
+        setLoading(false);
+        return;
+      }
+      if (loadedFor.current === currentSession.user.id) return;
 
-          if (currentSession?.user) {
-            await fetchUserData(currentSession.user.id);
-          }
-
-          setLoading(false);
-          return;
-        }
-
-        // LOGOUT — ONLY if user clicked logout
-        if (event === 'SIGNED_OUT') {
-          if (!manualLogout.current) {
-            // ignore refresh / token rehydrate
-            setLoading(false);
-            return;
-          }
-
-          setSession(null);
-          setUser(null);
-          setProfile(null);
-          setRole(null);
-          setLoading(false);
+      setLoading(true);
+      for (let attempt = 0; attempt < 3 && !cancelled; attempt++) {
+        try {
+          await fetchUserData(currentSession.user.id);
+          loadedFor.current = currentSession.user.id;
+          break;
+        } catch (err) {
+          console.error('User data error:', err);
+          await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
         }
       }
-    );
+      if (!cancelled) setLoading(false);
+    };
+
+    // Supabase: never await other supabase calls inside this callback — it runs while
+    // the auth lock is held, so queries can go out without the session. Defer instead.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      setTimeout(() => { if (!cancelled) applySession(currentSession); }, 0);
+    });
 
     return () => {
+      cancelled = true;
       subscription.unsubscribe();
     };
   }, []);
@@ -108,9 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  // ✅ LOGOUT THAT ACTUALLY WORKS
   const signOut = async () => {
-    manualLogout.current = true;
     await supabase.auth.signOut();
   };
 

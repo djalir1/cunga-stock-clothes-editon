@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { friendlyError } from '@/lib/format';
 
 export type CheckoutStatus = 'out' | 'returned' | 'sold';
 
@@ -36,7 +37,7 @@ export function useTemporaryStock() {
     queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
     queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
   };
-  const onError = (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' });
+  const onError = (e: Error) => toast({ title: 'Error', description: friendlyError(e), variant: 'destructive' });
 
   const { data: checkouts = [], isLoading } = useQuery<TempStockCheckout[]>({
     queryKey: ['temp-stock-checkouts'],

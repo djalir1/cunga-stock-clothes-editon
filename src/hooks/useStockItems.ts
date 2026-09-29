@@ -4,6 +4,7 @@ import type { StockItem, StockStatus, Category, StockVariant } from '@/lib/types
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect } from 'react';
+import { friendlyError } from '@/lib/format';
 
 export interface StockItemWithCategory extends Omit<StockItem, 'category'> {
   category: Category | null;
@@ -91,7 +92,7 @@ export function useStockItems() {
   };
 
   const onError = (fallback: string) => (error: Error) => {
-    toast({ title: 'Error', description: error.message || fallback, variant: 'destructive' });
+    toast({ title: 'Error', description: friendlyError(error, fallback), variant: 'destructive' });
   };
 
   const addItem = useMutation({

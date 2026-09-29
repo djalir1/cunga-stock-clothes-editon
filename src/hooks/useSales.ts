@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { ReceiptSale } from '@/lib/receipt';
+import { friendlyError } from '@/lib/format';
 
 export type PaymentMethod = 'cash' | 'mobile_money' | 'bank' | 'other';
 
@@ -87,7 +88,7 @@ export function useSales(limit = 30) {
       ['sales', 'stock-items', 'stock-movements', 'dashboard-stats', 'customers', 'debts'].forEach(key =>
         queryClient.invalidateQueries({ queryKey: [key] }));
     },
-    onError: (e: Error) => toast({ title: 'Sale not saved', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Sale not saved', description: friendlyError(e), variant: 'destructive' }),
   });
 
   return { recentSales: recent.data ?? [], isLoading: recent.isLoading, recordSale };
