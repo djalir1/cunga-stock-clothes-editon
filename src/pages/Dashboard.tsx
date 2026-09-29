@@ -7,7 +7,10 @@ import { QuickActions } from '@/components/dashboard/QuickActions';
 import { StockStatusChart } from '@/components/dashboard/StockStatusChart';
 import { ActivityTimeline } from '@/components/dashboard/ActivityTimeline';
 import { TopItems } from '@/components/dashboard/TopItems';
-import { Package, PackageCheck, PackageX, AlertTriangle, TrendingUp, Clock } from 'lucide-react';
+import { useTodaySummary } from '@/hooks/useSales';
+import { useTemporaryStock } from '@/hooks/useTemporaryStock';
+import { formatRWF } from '@/lib/format';
+import { ShoppingBag, Timer, HandCoins, AlertTriangle, TrendingUp, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
 
@@ -15,6 +18,10 @@ export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: movements = [], isLoading: movementsLoading } = useStockMovements(undefined, 10);
   const { items, isLoading: itemsLoading } = useStockItems();
+  const { data: today } = useTodaySummary();
+  const { openCheckouts, overdueCheckouts } = useTemporaryStock();
+  const piecesOut = openCheckouts.reduce((sum, c) => sum + c.quantity, 0);
+  const needRestock = (stats?.lowStock ?? 0) + (stats?.outOfStock ?? 0);
 
   const currentDate = new Date();
 
@@ -23,9 +30,9 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Dashboard Overview</h1>
+          <h1 className="text-2xl font-bold">Shop Overview</h1>
           <p className="text-muted-foreground">
-            Real-time stock management insights
+            Today's sales, garments out with customers and what needs restocking
           </p>
         </div>
         <Card className="bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
@@ -42,34 +49,35 @@ export default function Dashboard() {
       {/* Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Total Items"
-          value={stats?.totalItems ?? 0}
-          icon={Package}
-          description="All stock items"
+          title="Sales Today"
+          value={formatRWF(today?.revenue ?? 0)}
+          icon={ShoppingBag}
+          description={`${today?.salesCount ?? 0} sales · ${today?.piecesSold ?? 0} pieces`}
           variant="primary"
-          trend="up"
-          trendValue="+12%"
+          href="/sales"
         />
         <StatCard
-          title="In Stock"
-          value={stats?.inStock ?? 0}
-          icon={PackageCheck}
-          description="Available items"
+          title="Out with Customers"
+          value={piecesOut}
+          icon={Timer}
+          description={overdueCheckouts.length ? `${overdueCheckouts.length} overdue to come back` : 'Pieces on approval or reserved'}
           variant="success"
+          href="/temporary-stock"
         />
         <StatCard
-          title="Low Stock"
-          value={stats?.lowStock ?? 0}
-          icon={AlertTriangle}
-          description="Need attention"
+          title="Owed to the Shop"
+          value={formatRWF(today?.owedToShop ?? 0)}
+          icon={HandCoins}
+          description="Unpaid balances from credit sales"
           variant="warning"
         />
         <StatCard
-          title="Out of Stock"
-          value={stats?.outOfStock ?? 0}
-          icon={PackageX}
-          description="Unavailable"
+          title="Need Restocking"
+          value={needRestock}
+          icon={AlertTriangle}
+          description={`${stats?.lowStock ?? 0} low · ${stats?.outOfStock ?? 0} sold out`}
           variant="destructive"
+          href="/notifications"
         />
       </div>
 

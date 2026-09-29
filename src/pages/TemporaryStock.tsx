@@ -1,26 +1,29 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { FEATURES } from '@/config/features';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTemporaryStock, TempStockCheckout, CheckoutStatus } from '@/hooks/useTemporaryStock';
 import { useStockItems } from '@/hooks/useStockItems';
-import { formatRWF, optionLabel } from '@/lib/format';
+import { formatRWF } from '@/lib/format';
+import { FormDialog } from '@/components/shop/FormDialog';
+import { CustomerPicker, type CustomerChoice } from '@/components/shop/CustomerPicker';
+import { VariantPicker, type PickedVariant } from '@/components/shop/VariantPicker';
+import { OptionTag } from '@/components/shop/OptionPickers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Plus, Timer, CheckCircle2, Trash2, AlertTriangle,
   User, Package, ShoppingBag, ShieldCheck, RefreshCcw,
-  FileSpreadsheet, FileDown, Filter, Undo2, Phone
+  FileSpreadsheet, FileDown, Filter, Undo2, Phone, ChevronDown, Minus
 } from 'lucide-react';
-import { format, formatDistanceToNow, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { addDays, format, formatDistanceToNow, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -72,14 +75,19 @@ function TemporaryStockContent() {
 
   // --- Check-out dialog ---
   const emptyCheckoutForm = {
-    item_id: '', variant_id: '', customer_name: '', customer_phone: '', quantity: '1', deposit: '',
-    taken_date: today, expected_return_date: '', notes: '',
+    picked: null as PickedVariant | null,
+    customer: null as CustomerChoice | null,
+    quantity: 1,
+    expected_return_date: '',
+    deposit: '',
+    taken_date: today,
+    notes: '',
   };
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [showMore, setShowMore] = useState(false);
   const [checkoutForm, setCheckoutForm] = useState(emptyCheckoutForm);
-  const availableItems = items.filter(i => i.quantity > 0);
-  const checkoutItem = items.find(i => i.id === checkoutForm.item_id);
-  const checkoutVariant = checkoutItem?.variants.find(v => v.id === checkoutForm.variant_id);
+  const maxQty = checkoutForm.picked?.variant.quantity ?? 1;
+  const inDays = (n: number) => format(addDays(new Date(), n), 'yyyy-MM-dd');
 
   // --- Returned / Sold ---
   const [returnConfirmId, setReturnConfirmId] = useState<string | null>(null);
@@ -90,6 +98,15 @@ function TemporaryStockContent() {
   const sellOwes = sellTotal !== null && sellPaid !== null ? sellTotal - sellPaid : 0;
 
   const [deleteCheckoutConfirmId, setDeleteCheckoutConfirmId] = useState<string | null>(null);
+
+  // Dashboard "Out to Customer" links here with ?checkout=1
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get('checkout') === '1' && isKeeper) {
+      setIsCheckoutOpen(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams, isKeeper]);
 
   // --- Reports ---
   const [reportStart, setReportStart] = useState('');
@@ -113,22 +130,19 @@ function TemporaryStockContent() {
 
   const openCheckoutDialog = () => {
     setCheckoutForm(emptyCheckoutForm);
+    setShowMore(false);
     setIsCheckoutOpen(true);
   };
 
-  const pickItem = (itemId: string) => {
-    const item = items.find(i => i.id === itemId);
-    const inStock = item?.variants.filter(v => v.quantity > 0) ?? [];
-    setCheckoutForm({ ...checkoutForm, item_id: itemId, variant_id: inStock.length === 1 ? inStock[0].id : '' });
-  };
-
   const handleCheckout = async () => {
-    if (!checkoutForm.variant_id || !checkoutForm.customer_name.trim()) return;
+    const { picked, customer } = checkoutForm;
+    if (!picked || !customer) return;
     await checkOut.mutateAsync({
-      variant_id: checkoutForm.variant_id,
-      customer_name: checkoutForm.customer_name,
-      customer_phone: checkoutForm.customer_phone || undefined,
-      quantity: Number(checkoutForm.quantity) || 1,
+      variant_id: picked.variant.id,
+      customer_id: customer.id,
+      customer_name: customer.name,
+      customer_phone: customer.phone || undefined,
+      quantity: checkoutForm.quantity,
       deposit: checkoutForm.deposit ? Number(checkoutForm.deposit) : undefined,
       taken_date: checkoutForm.taken_date,
       expected_return_date: checkoutForm.expected_return_date || undefined,
@@ -541,137 +555,156 @@ function TemporaryStockContent() {
       </Tabs>
 
       {/* ── Check Out Dialog ── */}
-      <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
-        <DialogContent className="sm:max-w-[480px]">
-          <DialogHeader>
-            <DialogTitle>Check Out to Customer</DialogTitle>
-            <p className="text-sm text-muted-foreground mt-1">The pieces leave the shelf until they are returned or sold.</p>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-2">
-            <div className="space-y-2 col-span-2">
-              <Label>Item <span className="text-destructive">*</span></Label>
-              <Select value={checkoutForm.item_id} onValueChange={pickItem}>
-                <SelectTrigger><SelectValue placeholder={availableItems.length ? 'Choose an item' : 'No items in stock'} /></SelectTrigger>
-                <SelectContent>
-                  {availableItems.map(i => <SelectItem key={i.id} value={i.id}>{i.name} — {i.quantity} in stock</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            {checkoutItem && (checkoutItem.variants.length > 1 || checkoutItem.variants.some(v => v.size || v.color)) && (
-              <div className="space-y-2 col-span-2">
-                <Label>Size / Colour <span className="text-destructive">*</span></Label>
-                <Select value={checkoutForm.variant_id} onValueChange={v => setCheckoutForm({ ...checkoutForm, variant_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Choose size / colour" /></SelectTrigger>
-                  <SelectContent>
-                    {checkoutItem.variants.map(v => (
-                      <SelectItem key={v.id} value={v.id} disabled={v.quantity <= 0}>
-                        {optionLabel(v.size, v.color)} — {v.quantity} left
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+      <FormDialog
+        open={isCheckoutOpen}
+        onOpenChange={setIsCheckoutOpen}
+        title="Check Out to Customer"
+        description="The pieces leave the shelf until they come back or are bought."
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setIsCheckoutOpen(false)}>Cancel</Button>
+            <Button onClick={handleCheckout} disabled={!checkoutForm.picked || !checkoutForm.customer || checkOut.isPending}>
+              Confirm Check Out
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-2">
+          <Label>What is the customer taking?</Label>
+          {checkoutForm.picked ? (
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
+              <div className="min-w-0">
+                <div className="font-medium truncate">{checkoutForm.picked.item.name}</div>
+                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                  <OptionTag size={checkoutForm.picked.variant.size} color={checkoutForm.picked.variant.color} />
+                  <span>· {checkoutForm.picked.variant.quantity} on the shelf</span>
+                </div>
               </div>
-            )}
-            <div className="space-y-2 col-span-2">
-              <Label>Customer Name <span className="text-destructive">*</span></Label>
-              <Input placeholder="e.g. Jane Doe" value={checkoutForm.customer_name}
-                onChange={e => setCheckoutForm({ ...checkoutForm, customer_name: e.target.value })} />
+              <Button type="button" size="sm" variant="ghost" onClick={() => setCheckoutForm({ ...checkoutForm, picked: null, quantity: 1 })}>Change</Button>
             </div>
+          ) : (
+            <VariantPicker items={items} onPick={picked => setCheckoutForm({ ...checkoutForm, picked, quantity: 1 })} />
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Customer</Label>
+          <CustomerPicker value={checkoutForm.customer} onChange={customer => setCheckoutForm({ ...checkoutForm, customer })} />
+        </div>
+
+        <div className="grid grid-cols-[auto_1fr] gap-4 items-end">
+          <div className="space-y-2">
+            <Label>Pieces</Label>
+            <div className="flex items-center gap-1">
+              <Button type="button" size="icon" variant="outline" className="h-9 w-9"
+                disabled={checkoutForm.quantity <= 1}
+                onClick={() => setCheckoutForm({ ...checkoutForm, quantity: checkoutForm.quantity - 1 })}>
+                <Minus className="w-4 h-4" />
+              </Button>
+              <span className="w-8 text-center font-semibold">{checkoutForm.quantity}</span>
+              <Button type="button" size="icon" variant="outline" className="h-9 w-9"
+                disabled={checkoutForm.quantity >= maxQty}
+                onClick={() => setCheckoutForm({ ...checkoutForm, quantity: checkoutForm.quantity + 1 })}>
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Bring back by</Label>
+            <Input type="date" value={checkoutForm.expected_return_date}
+              onChange={e => setCheckoutForm({ ...checkoutForm, expected_return_date: e.target.value })} />
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-1.5 -mt-2">
+          {[{ label: 'Tomorrow', days: 1 }, { label: 'In 3 days', days: 3 }, { label: 'In a week', days: 7 }].map(o => (
+            <Button key={o.days} type="button" size="sm"
+              variant={checkoutForm.expected_return_date === inDays(o.days) ? 'default' : 'outline'}
+              className="h-7 text-xs"
+              onClick={() => setCheckoutForm({ ...checkoutForm, expected_return_date: inDays(o.days) })}>
+              {o.label}
+            </Button>
+          ))}
+        </div>
+
+        <button type="button" onClick={() => setShowMore(!showMore)}
+          className="flex items-center gap-1 text-sm text-primary font-medium">
+          <ChevronDown className={`w-4 h-4 transition-transform ${showMore ? 'rotate-180' : ''}`} />
+          {showMore ? 'Fewer details' : 'More details (deposit, date, notes)'}
+        </button>
+        {showMore && (
+          <div className="grid grid-cols-2 gap-4 animate-fade-in">
             <div className="space-y-2">
-              <Label>Phone</Label>
-              <Input type="tel" placeholder="e.g. 0788 000 000" value={checkoutForm.customer_phone}
-                onChange={e => setCheckoutForm({ ...checkoutForm, customer_phone: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Quantity</Label>
-              <Input type="number" min="1" max={checkoutVariant?.quantity}
-                value={checkoutForm.quantity}
-                onChange={e => setCheckoutForm({ ...checkoutForm, quantity: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Date Taken <span className="text-destructive">*</span></Label>
-              <Input type="date" value={checkoutForm.taken_date}
-                onChange={e => setCheckoutForm({ ...checkoutForm, taken_date: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Expected Return Date</Label>
-              <Input type="date" value={checkoutForm.expected_return_date}
-                onChange={e => setCheckoutForm({ ...checkoutForm, expected_return_date: e.target.value })} />
-            </div>
-            <div className="space-y-2 col-span-2">
               <Label>Deposit Paid (RWF)</Label>
               <Input type="number" min="0" placeholder="0" value={checkoutForm.deposit}
                 onChange={e => setCheckoutForm({ ...checkoutForm, deposit: e.target.value })} />
             </div>
+            <div className="space-y-2">
+              <Label>Date Taken</Label>
+              <Input type="date" value={checkoutForm.taken_date}
+                onChange={e => setCheckoutForm({ ...checkoutForm, taken_date: e.target.value || today })} />
+            </div>
             <div className="space-y-2 col-span-2">
               <Label>Notes</Label>
-              <Textarea placeholder="e.g. Trying for a wedding, may need alterations..." rows={2} value={checkoutForm.notes}
+              <Textarea placeholder="e.g. Trying for a wedding, may need alterations…" rows={2} value={checkoutForm.notes}
                 onChange={e => setCheckoutForm({ ...checkoutForm, notes: e.target.value })} />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCheckoutOpen(false)}>Cancel</Button>
-            <Button onClick={handleCheckout}
-              disabled={!checkoutForm.variant_id || !checkoutForm.customer_name.trim() || !checkoutForm.taken_date || checkOut.isPending}>
-              Confirm Check Out
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        )}
+      </FormDialog>
 
       {/* ── Sold Dialog ── */}
-      <Dialog open={!!selling} onOpenChange={v => !v && setSelling(null)}>
-        <DialogContent className="sm:max-w-[440px]">
-          <DialogHeader>
-            <DialogTitle>Mark as Sold</DialogTitle>
-            {selling && (
-              <p className="text-sm text-muted-foreground mt-1">
-                <span className="font-medium text-foreground">{selling.customer_name}</span> kept {selling.quantity} ×{' '}
-                {selling.item_name} ({variant(selling.size, selling.color)})
-              </p>
-            )}
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-2">
-            <div className="space-y-2">
-              <Label>Price per piece (RWF) <span className="text-destructive">*</span></Label>
-              <Input type="number" min="0" placeholder="Agreed price" value={sellForm.unitPrice}
-                onChange={e => setSellForm({ ...sellForm, unitPrice: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Amount Paid (RWF)</Label>
-              <Input type="number" min="0" placeholder={sellTotal !== null ? `Full: ${sellTotal.toLocaleString('en-US')}` : ''}
-                value={sellForm.amountPaid}
-                onChange={e => setSellForm({ ...sellForm, amountPaid: e.target.value })} />
-            </div>
-            {selling?.deposit ? (
-              <p className="col-span-2 text-xs text-muted-foreground">
-                Deposit already taken: {formatRWF(selling.deposit)} — include it in the amount paid.
-              </p>
-            ) : null}
-            {sellOwes > 0 && (
-              <div className="space-y-2 col-span-2">
-                <Label>Balance Due Date</Label>
-                <Input type="date" value={sellForm.dueDate} onChange={e => setSellForm({ ...sellForm, dueDate: e.target.value })} />
-              </div>
-            )}
-            {sellTotal !== null && (
-              <div className="col-span-2 rounded-lg bg-muted/50 px-3 py-2 space-y-1 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-semibold">{formatRWF(sellTotal)}</span></div>
-                {sellOwes > 0 && (
-                  <div className="flex justify-between text-amber-600"><span>Still owes (added to debts)</span><span className="font-semibold">{formatRWF(sellOwes)}</span></div>
-                )}
-              </div>
-            )}
-            {sellOwes < 0 && <p className="col-span-2 text-sm text-destructive">Amount paid can't be more than the total.</p>}
-          </div>
-          <DialogFooter>
+      <FormDialog
+        open={!!selling}
+        onOpenChange={v => !v && setSelling(null)}
+        title="Mark as Sold"
+        description={selling && (
+          <span>
+            <span className="font-medium text-foreground">{selling.customer_name}</span> kept {selling.quantity} × {selling.item_name} ({variant(selling.size, selling.color)})
+          </span>
+        )}
+        footer={
+          <>
             <Button variant="outline" onClick={() => setSelling(null)}>Cancel</Button>
             <Button onClick={handleSell} disabled={sellTotal === null || sellOwes < 0 || closeCheckout.isPending}>
               Confirm Sale
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </>
+        }
+      >
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Price per piece (RWF)</Label>
+            <Input type="number" min="0" placeholder="Agreed price" autoFocus value={sellForm.unitPrice}
+              onChange={e => setSellForm({ ...sellForm, unitPrice: e.target.value })} />
+          </div>
+          <div className="space-y-2">
+            <Label>Amount Paid (RWF)</Label>
+            <Input type="number" min="0" placeholder={sellTotal !== null ? `Full: ${sellTotal.toLocaleString('en-US')}` : ''}
+              value={sellForm.amountPaid}
+              onChange={e => setSellForm({ ...sellForm, amountPaid: e.target.value })} />
+          </div>
+        </div>
+        {selling?.deposit ? (
+          <p className="text-xs text-muted-foreground">
+            Deposit already taken: {formatRWF(selling.deposit)} — include it in the amount paid.
+          </p>
+        ) : null}
+        {sellOwes > 0 && (
+          <div className="space-y-2">
+            <Label>Pay the rest by</Label>
+            <Input type="date" value={sellForm.dueDate} onChange={e => setSellForm({ ...sellForm, dueDate: e.target.value })} />
+          </div>
+        )}
+        {sellTotal !== null && (
+          <div className="rounded-lg bg-muted/50 px-3 py-2 space-y-1 text-sm">
+            <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-semibold">{formatRWF(sellTotal)}</span></div>
+            {sellOwes > 0 && (
+              <div className="flex justify-between text-amber-600"><span>Still owes (added to debts)</span><span className="font-semibold">{formatRWF(sellOwes)}</span></div>
+            )}
+          </div>
+        )}
+        {sellOwes < 0 && <p className="text-sm text-destructive">Amount paid can't be more than the total.</p>}
+      </FormDialog>
 
       {/* ── Returned Confirm ── */}
       <AlertDialog open={!!returnConfirmId} onOpenChange={() => setReturnConfirmId(null)}>

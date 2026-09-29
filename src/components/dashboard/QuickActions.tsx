@@ -1,30 +1,30 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, ArrowUpRight, ArrowDownLeft, FileText, Upload } from 'lucide-react';
+import { Plus, ShoppingCart, Timer, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function QuickActions() {
   const actions = [
     {
-      label: 'Add Item',
-      icon: Plus,
-      href: '/stock',
-      color: 'bg-primary hover:bg-primary/90 text-primary-foreground',
-    },
-    {
-      label: 'Record Sale',
-      icon: ArrowUpRight,
-      href: '/stock',
-      color: 'bg-warning hover:bg-warning/90 text-warning-foreground',
-    },
-    {
-      label: 'Restock',
-      icon: ArrowDownLeft,
-      href: '/stock',
+      label: 'New Sale',
+      icon: ShoppingCart,
+      href: '/sales',
       color: 'bg-success hover:bg-success/90 text-success-foreground',
     },
     {
-      label: 'Generate Report',
+      label: 'Add Item',
+      icon: Plus,
+      href: '/stock?add=1',
+      color: 'bg-primary hover:bg-primary/90 text-primary-foreground',
+    },
+    {
+      label: 'Out to Customer',
+      icon: Timer,
+      href: '/temporary-stock?checkout=1',
+      color: 'bg-warning hover:bg-warning/90 text-warning-foreground',
+    },
+    {
+      label: 'Reports',
       icon: FileText,
       href: '/reports',
       color: 'bg-accent hover:bg-accent/90 text-accent-foreground',

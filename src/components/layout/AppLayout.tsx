@@ -22,6 +22,7 @@ import {
   Search as SearchIcon,
   X,
   Timer,
+  ShoppingCart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sidebar } from './Sidebar';
@@ -29,6 +30,7 @@ import { Input } from '@/components/ui/input';
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/sales', label: 'Sales', icon: ShoppingCart },
   { path: '/stock', label: 'Stock Items', icon: Package },
   { path: '/categories', label: 'Categories', icon: FolderOpen },
   { path: '/temporary-stock', label: 'Temporary Stock', icon: Timer },

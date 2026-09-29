@@ -100,6 +100,7 @@ export type Database = {
       }
       debt_payments: {
         Row: {
+          is_initial: boolean
           amount: number
           created_at: string
           created_by: string | null
@@ -110,6 +111,7 @@ export type Database = {
           paid_at: string
         }
         Insert: {
+          is_initial?: boolean
           amount: number
           created_at?: string
           created_by?: string | null
@@ -120,6 +122,7 @@ export type Database = {
           paid_at?: string
         }
         Update: {
+          is_initial?: boolean
           amount?: number
           created_at?: string
           created_by?: string | null
@@ -223,6 +226,7 @@ export type Database = {
       }
       sale_items: {
         Row: {
+          category_name: string | null
           color: string | null
           id: string
           item_name: string
@@ -234,6 +238,7 @@ export type Database = {
           variant_id: string | null
         }
         Insert: {
+          category_name?: string | null
           color?: string | null
           id?: string
           item_name: string
@@ -245,6 +250,7 @@ export type Database = {
           variant_id?: string | null
         }
         Update: {
+          category_name?: string | null
           color?: string | null
           id?: string
           item_name?: string
@@ -274,6 +280,7 @@ export type Database = {
       }
       sales: {
         Row: {
+          receipt_no: number
           amount_paid: number
           created_at: string
           created_by: string | null
@@ -288,6 +295,7 @@ export type Database = {
           total: number
         }
         Insert: {
+          receipt_no?: never
           amount_paid: number
           created_at?: string
           created_by?: string | null
@@ -302,6 +310,7 @@ export type Database = {
           total: number
         }
         Update: {
+          receipt_no?: never
           amount_paid?: number
           created_at?: string
           created_by?: string | null

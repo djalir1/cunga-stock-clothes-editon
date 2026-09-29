@@ -23,12 +23,14 @@ import {
   Settings,
   Bell,
   Timer,
+  ShoppingCart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/stock', label: 'Stock Items', icon: Package, badge: 'New' },
+  { path: '/sales', label: 'Sales', icon: ShoppingCart, badge: 'New' },
+  { path: '/stock', label: 'Stock Items', icon: Package },
   { path: '/categories', label: 'Categories', icon: FolderOpen },
   { path: '/temporary-stock', label: 'Temporary Stock', icon: Timer },
   { path: '/movements', label: 'History', icon: History },

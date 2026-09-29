@@ -57,6 +57,7 @@ export function useTemporaryStock() {
   const checkOut = useMutation({
     mutationFn: async (c: {
       variant_id: string;
+      customer_id?: string | null;
       customer_name: string;
       customer_phone?: string;
       quantity: number;
@@ -68,6 +69,7 @@ export function useTemporaryStock() {
       const { error } = await supabase.rpc('check_out_temp', {
         p_variant_id: c.variant_id,
         p_quantity: c.quantity,
+        p_customer_id: c.customer_id || null,
         p_customer_name: c.customer_name,
         p_customer_phone: c.customer_phone || null,
         p_deposit: c.deposit ?? null,
@@ -79,6 +81,7 @@ export function useTemporaryStock() {
     },
     onSuccess: () => {
       invalidate();
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
       toast({ title: 'Checked out', description: 'Item recorded as out with the customer.' });
     },
     onError,

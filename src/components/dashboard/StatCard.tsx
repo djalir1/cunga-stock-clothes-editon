@@ -1,6 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { LucideIcon, TrendingUp, TrendingDown } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface StatCardProps {
   title: string;
@@ -10,6 +11,8 @@ interface StatCardProps {
   trend?: 'up' | 'down' | 'neutral';
   trendValue?: string;
   variant?: 'default' | 'primary' | 'success' | 'warning' | 'destructive';
+  /** Makes the whole card a link */
+  href?: string;
 }
 
 const variantStyles = {
@@ -48,12 +51,14 @@ export function StatCard({
   trend,
   trendValue,
   variant = 'default',
+  href,
 }: StatCardProps) {
   const styles = variantStyles[variant];
 
-  return (
+  const card = (
     <Card className={cn(
-      'relative overflow-hidden transition-all duration-300 group',
+      'relative overflow-hidden transition-all duration-300 group h-full',
+      href && 'cursor-pointer hover:-translate-y-0.5',
       styles.card,
       styles.glow
     )}>
@@ -72,7 +77,7 @@ export function StatCard({
           <div className="space-y-2">
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold tracking-tight">{value}</span>
+              <span className={cn('font-bold tracking-tight', String(value).length > 10 ? 'text-2xl' : 'text-3xl')}>{value}</span>
               {trend && trendValue && (
                 <span className={cn(
                   'flex items-center text-xs font-medium',
@@ -103,4 +108,6 @@ export function StatCard({
       </CardContent>
     </Card>
   );
+
+  return href ? <Link to={href} className="block">{card}</Link> : card;
 }
