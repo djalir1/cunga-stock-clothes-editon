@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { addDays, format, formatDistanceToNowStrict } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStockItems, type StockItemWithCategory } from '@/hooks/useStockItems';
+import { useStaffNames } from '@/hooks/useProfiles';
 import { usePurchaseOrders, ORDER_STATUS, isLate, type PurchaseOrder, type NewOrder } from '@/hooks/usePurchaseOrders';
 import { formatRWF } from '@/lib/format';
 import { FormDialog } from '@/components/shop/FormDialog';
@@ -86,6 +87,7 @@ export default function Orders() {
   const { canEdit } = useAuth();
   const { items } = useStockItems();
   const { orders, suppliers, isLoading, createOrder, receive, update, remove } = usePurchaseOrders();
+  const nameOf = useStaffNames();
 
   // New order form
   const [creating, setCreating] = useState(false);
@@ -166,6 +168,10 @@ export default function Orders() {
                 {lateBy && <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/30">Late by {lateBy}</Badge>}
               </p>
               <p className="text-sm text-muted-foreground truncate">{o.supplier_name || 'No supplier'} · ordered {fmt(o.ordered_on)}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {nameOf(o.created_by) && <>Placed by <b className="text-foreground">{nameOf(o.created_by)}</b></>}
+                {nameOf(o.received_by) && <> · checked in by <b className="text-foreground">{nameOf(o.received_by)}</b></>}
+              </p>
             </div>
             <div className="text-right shrink-0">
               <p className="font-bold">{formatRWF(o.total)}</p>

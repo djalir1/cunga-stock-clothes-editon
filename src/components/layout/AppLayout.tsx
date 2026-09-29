@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useStockItems } from '@/hooks/useStockItems';
 import { useShopColorsLive } from '@/hooks/useShopColors';
+import { useShopSettingsLive } from '@/hooks/useShopSettings';
 import { useAlerts } from '@/hooks/useAlerts';
 import { useCategories } from '@/hooks/useCategories';
 import { Button } from '@/components/ui/button';
@@ -54,6 +55,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
 
   useShopColorsLive();
+  useShopSettingsLive();
   const { items } = useStockItems();
   const alertCount = useAlerts().length;
   const { categories } = useCategories();

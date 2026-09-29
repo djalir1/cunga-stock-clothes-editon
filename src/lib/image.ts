@@ -32,9 +32,9 @@ export async function compressImage(file: File, maxSide = 900, quality = 0.8): P
     canvas.toBlob(b => (b ? resolve(b) : reject(new Error('Could not prepare the picture.'))), 'image/jpeg', quality));
 }
 
-export async function uploadItemImage(file: File): Promise<string> {
-  const blob = await compressImage(file);
-  const path = `items/${crypto.randomUUID()}.jpg`;
+export async function uploadItemImage(file: File, folder = 'items', maxSide = 900): Promise<string> {
+  const blob = await compressImage(file, maxSide);
+  const path = `${folder}/${crypto.randomUUID()}.jpg`;
   const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { contentType: 'image/jpeg' });
   if (error) throw error;
   return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;

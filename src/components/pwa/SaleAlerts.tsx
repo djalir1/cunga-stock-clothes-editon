@@ -5,6 +5,52 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
 import { BellRing, BellOff, Share, Send, X } from 'lucide-react';
+import { useNotificationPrefs, type NotificationPrefs } from '@/hooks/useNotificationPrefs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+const KINDS: { key: keyof NotificationPrefs; label: string; hint: string }[] = [
+  { key: 'sales', label: 'Every sale', hint: 'Who bought what, for how much, who sold it' },
+  { key: 'sale_cancelled', label: 'Cancelled sales', hint: 'When a sale is cancelled, with the reason' },
+  { key: 'low_stock', label: 'Restock reminders', hint: 'When an item runs low or sells out, and every morning' },
+  { key: 'debt_due', label: 'Debts coming due', hint: 'Customers who should pay soon' },
+  { key: 'debt_overdue', label: 'Late payments', hint: 'Customers past their promised date' },
+  { key: 'orders', label: 'Orders & deliveries', hint: 'Deliveries due today/tomorrow, late, or arrived' },
+  { key: 'temp_stock', label: 'Temporary stock', hint: 'Clothes that should come back today or are late' },
+  { key: 'daily_summary', label: "Yesterday's sales", hint: 'A short summary every morning at 8:00' },
+];
+
+/** The kinds of alerts this person wants (saved on the account, used for every device) */
+function AlertChoices() {
+  const { prefs, update } = useNotificationPrefs();
+  return (
+    <div className="space-y-2 pt-2 border-t border-border">
+      <p className="text-sm font-semibold">What to notify me about</p>
+      <div className="divide-y divide-border rounded-lg border border-border">
+        {KINDS.map(k => (
+          <div key={k.key} className="flex items-center justify-between gap-3 px-3 py-2.5">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">{k.label}</p>
+              <p className="text-xs text-muted-foreground">{k.hint}</p>
+              {k.key === 'debt_due' && prefs.debt_due && (
+                <div className="flex items-center gap-2 mt-1.5 text-xs">
+                  <span>Remind me</span>
+                  <Select value={String(prefs.debt_due_days)} onValueChange={v => update.mutate({ debt_due_days: Number(v) })}>
+                    <SelectTrigger className="h-7 w-32 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {[0, 1, 2, 3, 5, 7].map(d => <SelectItem key={d} value={String(d)}>{d === 0 ? 'on the day' : `${d} day${d > 1 ? 's' : ''} before`}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+            <Switch checked={prefs[k.key] as boolean} onCheckedChange={v => update.mutate({ [k.key]: v })} />
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">Morning reminders arrive at 8:00. Storekeepers don't receive alerts.</p>
+    </div>
+  );
+}
 
 const DISMISS_KEY = 'cunga-alerts-card-dismissed';
 
@@ -46,9 +92,9 @@ export function SaleAlerts({ compact = false }: { compact?: boolean }) {
       case 'on':
         return (
           <div className="space-y-3">
-            <p className="text-sm text-green-700 dark:text-green-400 font-medium">On for this device — you'll get a notification for every sale and cancelled sale.</p>
+            <p className="text-sm text-green-700 dark:text-green-400 font-medium">On for this device. Choose below what you want to hear about.</p>
             <label className="flex items-center justify-between gap-3 text-sm">
-              <span>Also notify me about sales <b>I</b> make</span>
+              <span>Also notify me about things <b>I</b> do</span>
               <Switch checked={includeOwn} onCheckedChange={setOwn} />
             </label>
             <div className="flex flex-wrap gap-2">
@@ -72,9 +118,10 @@ export function SaleAlerts({ compact = false }: { compact?: boolean }) {
       <CardContent className="p-4 flex gap-3">
         <span className="rounded-full bg-primary/10 p-2 h-fit"><BellRing className="w-5 h-5 text-primary" /></span>
         <div className="flex-1 min-w-0 space-y-1">
-          <p className="font-semibold">Sale alerts on this phone</p>
+          <p className="font-semibold">{compact ? 'Sale alerts on this phone' : 'Phone notifications'}</p>
           {body}
           {error && <p className="text-sm text-destructive">{error}</p>}
+          {!compact && <AlertChoices />}
         </div>
         {compact && (
           <Button size="icon" variant="ghost" className="shrink-0" aria-label="Not now"

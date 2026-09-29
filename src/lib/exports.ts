@@ -32,6 +32,11 @@ export function downloadPDF(filename: string, title: string, subtitle: string, s
   const h = doc.internal.pageSize.height;
   const navy: [number, number, number] = [30, 58, 138];
 
+  if (SHOP.logoData) {
+    const props = doc.getImageProperties(SHOP.logoData);
+    const h = 14, lw = Math.min(40, (props.width / props.height) * h);
+    doc.addImage(SHOP.logoData, w - 14 - lw, 10, lw, (lw / props.width) * props.height);
+  }
   doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.setTextColor(...navy);
   doc.text(SHOP.name, 14, 18);
   doc.setFontSize(12); doc.setTextColor(30, 30, 30);
@@ -64,7 +69,8 @@ export function downloadPDF(filename: string, title: string, subtitle: string, s
   const pages = doc.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i); doc.setFontSize(8); doc.setTextColor(150, 150, 150);
-    if (footnote) doc.text(footnote, 14, h - 10);
+    if (footnote) doc.text(footnote, 14, h - 14);
+    doc.text(`${SHOP.name} · Powered by Cunga Stock`, 14, h - 10);
     doc.text(`Page ${i} of ${pages}`, w - 14, h - 10, { align: 'right' });
   }
   doc.save(filename);

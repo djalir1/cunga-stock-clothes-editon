@@ -21,6 +21,7 @@ export interface SaleWithLines extends ReceiptSale {
   source: string;
   voided_at: string | null;
   void_reason: string | null;
+  created_by: string | null;
 }
 
 export interface NewSale {
@@ -33,7 +34,7 @@ export interface NewSale {
 }
 
 const SALE_SELECT = `
-  id, receipt_no, sold_at, customer_id, customer_name, total, amount_paid, payment_status, payment_method, source, voided_at, void_reason,
+  id, receipt_no, sold_at, customer_id, customer_name, total, amount_paid, payment_status, payment_method, source, voided_at, void_reason, created_by,
   sale_items(item_name, size, color, quantity, unit_price, set_name),
   debts(id, due_date)
 `;

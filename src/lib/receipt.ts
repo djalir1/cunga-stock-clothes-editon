@@ -63,7 +63,8 @@ function buildReceipt(sale: ReceiptSale): jsPDF {
   const margin = 5;
   const lineGap = 4.2;
   const groups = groupReceiptLines(sale.lines);
-  const height = 78 + sale.lines.length * 9 + groups.filter(g => g.set_name).length * 5 + (sale.payment_status !== 'paid' ? 14 : 0) + (sale.voided_at ? 6 : 0);
+  const height = 78 + sale.lines.length * 9 + groups.filter(g => g.set_name).length * 5 + (sale.payment_status !== 'paid' ? 14 : 0) + (sale.voided_at ? 6 : 0)
+    + (SHOP.logoData ? 22 : 0) + (SHOP.email ? 4 : 0) + (SHOP.tin ? 4 : 0) + 12;
   const doc = new jsPDF({ unit: 'mm', format: [width, height] });
   const right = width - margin;
   let y = 9;
@@ -86,9 +87,20 @@ function buildReceipt(sale: ReceiptSale): jsPDF {
   };
 
   doc.setTextColor(20);
+  if (SHOP.logoData) {
+    // Shop logo, fitted in a 20 mm box
+    const props = doc.getImageProperties(SHOP.logoData);
+    const scale = Math.min(20 / props.width, 20 / props.height);
+    const w = props.width * scale, h = props.height * scale;
+    doc.addImage(SHOP.logoData, width / 2 - w / 2, y - 4, w, h);
+    y += h + 1;
+  }
   center(SHOP.name, 13, true);
-  center(SHOP.tagline, 8.5);
-  center([SHOP.location, SHOP.phone].filter(Boolean).join(' · '), 7.5);
+  if (SHOP.tagline) center(SHOP.tagline, 8.5);
+  const contact = [SHOP.location, SHOP.phone].filter(Boolean).join(' · ');
+  if (contact) center(contact, 7.5);
+  if (SHOP.email) center(SHOP.email, 7.5);
+  if (SHOP.tin) center(`TIN: ${SHOP.tin}`, 7.5);
   y += 2;
   rule();
 
@@ -138,7 +150,21 @@ function buildReceipt(sale: ReceiptSale): jsPDF {
 
   y += 1;
   doc.setFontSize(8); doc.setFont('helvetica', 'normal');
-  doc.text(doc.splitTextToSize(SHOP.receiptFooter, width - margin * 2), width / 2, y, { align: 'center' });
+  if (SHOP.receiptFooter) {
+    const footer = doc.splitTextToSize(SHOP.receiptFooter, width - margin * 2);
+    doc.text(footer, width / 2, y, { align: 'center' });
+    y += footer.length * 3.6 + 3;
+  }
+  // Small "Powered by Cunga Stock" mark
+  doc.setFontSize(6.5); doc.setTextColor(140);
+  if (SHOP.cungaLogoData) {
+    const props = doc.getImageProperties(SHOP.cungaLogoData);
+    const h = 5, w = (props.width / props.height) * h;
+    doc.addImage(SHOP.cungaLogoData, width / 2 - (w + 22) / 2, y - 3.5, w, h);
+    doc.text('Powered by Cunga Stock', width / 2 - (w + 22) / 2 + w + 1, y);
+  } else {
+    doc.text('Powered by Cunga Stock', width / 2, y, { align: 'center' });
+  }
   return doc;
 }
 

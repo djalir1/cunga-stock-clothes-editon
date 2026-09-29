@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { addDays, format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,6 +13,7 @@ import { ColorDot, OptionTag } from '@/components/shop/OptionPickers';
 import { FormDialog } from '@/components/shop/FormDialog';
 import { ItemThumb } from '@/components/shop/PhotoInput';
 import { PaymentBadge } from '@/components/shop/PaymentBadge';
+import { useStaffNames } from '@/hooks/useProfiles';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -58,6 +59,18 @@ export default function Sales() {
   const [method, setMethod] = useState<PaymentMethod>('cash');
   const [receipt, setReceipt] = useState<SaleWithLines | null>(null);
   const [cancelReason, setCancelReason] = useState<string | null>(null);
+  const [justSold, setJustSold] = useState(false);
+  const nameOf = useStaffNames();
+  // Phones: the cart is below the items, so a floating bar shows the total and jumps to it
+  const cartRef = useRef<HTMLDivElement>(null);
+  const [cartVisible, setCartVisible] = useState(false);
+  useEffect(() => {
+    const el = cartRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setCartVisible(e.isIntersecting), { threshold: 0.15 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
   const [setPick, setSetPick] = useState<{ set: ItemSet; chosen: Record<string, string> } | null>(null);
 
   // A tapped phone notification opens /sales?receipt=<id>
@@ -67,11 +80,13 @@ export default function Sales() {
     let alive = true;
     fetchSale(receiptParam).then(sale => {
       if (!alive) return;
-      if (sale) { setReceipt(sale); setCancelReason(null); }
+      if (sale) { setReceipt(sale); setCancelReason(null); setJustSold(false); }
       setSearchParams({}, { replace: true });
     });
     return () => { alive = false; };
   }, [receiptParam, fetchSale, setSearchParams]);
+
+  const openReceipt = (s: SaleWithLines) => { setReceipt(s); setCancelReason(null); setJustSold(false); };
 
   const itemById = useMemo(() => new Map(items.map(i => [i.id, i])), [items]);
   const inDays = (n: number) => format(addDays(new Date(), n), 'yyyy-MM-dd');
@@ -166,6 +181,7 @@ export default function Sales() {
     });
     resetSale();
     setCancelReason(null);
+    setJustSold(true);
     setReceipt(sale);
   };
 
@@ -258,7 +274,7 @@ export default function Sales() {
                     ) : <p>Nothing in stock matches “{search}”.</p>}
                   </div>
                 ) : (
-                  <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+                  <div className="space-y-3 lg:max-h-[60vh] lg:overflow-y-auto lg:pr-1">
                     <p className="text-xs text-muted-foreground">Tap a colour / size to add it. Tap again for another piece.</p>
                     {shownItems.map(item => (
                       <div key={item.id} className="rounded-xl border border-border p-3">
@@ -287,7 +303,7 @@ export default function Sales() {
                   {sets.length === 0 && <Button asChild variant="outline" className="mt-4"><Link to="/stock">Create sets in Stock → Outfit sets</Link></Button>}
                 </div>
               ) : (
-                <div className="grid gap-3 sm:grid-cols-2 max-h-[60vh] overflow-y-auto pr-1">
+                <div className="grid gap-3 sm:grid-cols-2 lg:max-h-[60vh] lg:overflow-y-auto lg:pr-1">
                   {shownSets.map(s => {
                     const parts = s.part_ids.map(id => itemById.get(id)).filter((i): i is StockItemWithCategory => !!i);
                     const available = parts.length >= 2 && parts.every(p => p.variants.some(v => leftOf(v) > 0));
@@ -312,7 +328,7 @@ export default function Sales() {
           </Card>
 
           {/* ── Cart & payment ── */}
-          <Card className="lg:col-span-2 lg:sticky lg:top-20 self-start">
+          <Card ref={cartRef} className="lg:col-span-2 lg:sticky lg:top-20 self-start scroll-mt-20">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
                 <ShoppingCart className="w-5 h-5 text-primary" /> 2. Cart
@@ -489,7 +505,25 @@ export default function Sales() {
               <Receipt className="w-10 h-10 mx-auto mb-3 opacity-30" /><p>No sales yet.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="space-y-2 md:hidden">
+              {recentSales.map(s => (
+                <button key={s.id} type="button" onClick={() => openReceipt(s)}
+                  className={cn('w-full text-left rounded-xl border border-border p-3 active:bg-muted', s.voided_at && 'opacity-50')}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold">{formatRWF(s.total)}</span>
+                    {s.voided_at ? <Badge variant="outline" className="text-destructive border-destructive/40">Cancelled</Badge> : <PaymentBadge status={s.payment_status} />}
+                  </div>
+                  <p className="text-sm truncate mt-0.5">
+                    {groupReceiptLines(s.lines).map(g => g.set_name ? `${g.lines[0].quantity}× ${g.set_name}` : `${g.lines[0].quantity}× ${g.lines[0].item_name}`).join(', ')}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {receiptNumber(s.receipt_no)} · {format(new Date(s.sold_at), 'dd MMM, HH:mm')} · {s.customer_name || 'Walk-in'}{nameOf(s.created_by) && ` · by ${nameOf(s.created_by)}`}
+                  </p>
+                </button>
+              ))}
+            </div>
+            <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -504,7 +538,7 @@ export default function Sales() {
                 </TableHeader>
                 <TableBody>
                   {recentSales.map(s => (
-                    <TableRow key={s.id} className={cn('cursor-pointer', s.voided_at && 'opacity-50 line-through')} onClick={() => { setReceipt(s); setCancelReason(null); }}>
+                    <TableRow key={s.id} className={cn('cursor-pointer', s.voided_at && 'opacity-50 line-through')} onClick={() => openReceipt(s)}>
                       <TableCell className="font-mono text-sm">{receiptNumber(s.receipt_no)}</TableCell>
                       <TableCell className="text-sm whitespace-nowrap">{format(new Date(s.sold_at), 'dd MMM, HH:mm')}</TableCell>
                       <TableCell className="text-sm">{s.customer_name || <span className="text-muted-foreground">Walk-in</span>}</TableCell>
@@ -535,9 +569,21 @@ export default function Sales() {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>
+
+      {/* ── Phones: floating cart bar ── */}
+      {canEdit && cart.length > 0 && !cartVisible && (
+        <div className="lg:hidden fixed inset-x-3 bottom-3 z-40 animate-fade-in" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <button type="button" onClick={() => cartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            className="w-full flex items-center justify-between gap-3 rounded-2xl bg-green-600 text-white px-4 py-3 shadow-xl active:scale-[0.99]">
+            <span className="flex items-center gap-2 font-medium"><ShoppingCart className="w-5 h-5" /> {pieces} {pieces === 1 ? 'piece' : 'pieces'}</span>
+            <span className="font-bold">{formatRWF(total)} · Checkout →</span>
+          </button>
+        </div>
+      )}
 
       {/* ── Choose each part of a set ── */}
       <FormDialog
@@ -571,8 +617,8 @@ export default function Sales() {
       <FormDialog
         open={!!receipt}
         onOpenChange={open => !open && setReceipt(null)}
-        title={receipt ? `Receipt ${receiptNumber(receipt.receipt_no)}` : ''}
-        description={receipt && format(new Date(receipt.sold_at), 'dd MMM yyyy · HH:mm')}
+        title={receipt ? (justSold ? `Sale saved ✅  Receipt ${receiptNumber(receipt.receipt_no)}` : `Receipt ${receiptNumber(receipt.receipt_no)}`) : ''}
+        description={receipt && <>{format(new Date(receipt.sold_at), 'dd MMM yyyy · HH:mm')}{nameOf(receipt.created_by) && <> · sold by <b className="text-foreground">{nameOf(receipt.created_by)}</b></>}</>}
         footer={receipt && (
           <>
             {isOwner && !receipt.voided_at && cancelReason === null && (
@@ -580,8 +626,11 @@ export default function Sales() {
                 <Ban className="w-4 h-4" /> Cancel sale
               </Button>
             )}
-            <Button variant="outline" className="gap-2" onClick={() => downloadReceipt(receipt)}><FileDown className="w-4 h-4" /> Download PDF</Button>
-            <Button className="gap-2" onClick={() => printReceipt(receipt)}><Printer className="w-4 h-4" /> Print</Button>
+            <Button variant="outline" className="gap-2" onClick={() => downloadReceipt(receipt)}><FileDown className="w-4 h-4" /> PDF</Button>
+            <Button variant="outline" className="gap-2" onClick={() => printReceipt(receipt)}><Printer className="w-4 h-4" /> Print</Button>
+            <Button className="gap-2 bg-green-600 hover:bg-green-700" onClick={() => setReceipt(null)}>
+              <CheckCircle2 className="w-4 h-4" /> {justSold ? 'Done — next customer' : 'Close'}
+            </Button>
           </>
         )}
       >

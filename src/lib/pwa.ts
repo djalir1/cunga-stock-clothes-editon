@@ -8,6 +8,8 @@ interface BeforeInstallPromptEvent extends Event {
 
 let installEvent: BeforeInstallPromptEvent | null = null;
 let waitingWorker: ServiceWorker | null = null;
+/** A newer build is on the server (the page was opened before it was published) */
+let newBuild = false;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach(l => l());
 const subscribe = (l: () => void) => { listeners.add(l); return () => listeners.delete(l); };
@@ -39,12 +41,32 @@ export function setupPwa() {
       console.warn('Service worker not registered', e);
     }
   });
+  // Coming back to the app (e.g. phone unlocked): look for a newer version, at most every 10 minutes
+  let lastCheck = Date.now();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || Date.now() - lastCheck < 10 * 60 * 1000) return;
+    lastCheck = Date.now();
+    navigator.serviceWorker.getRegistration().then(r => r?.update()).catch(() => {});
+    checkForNewBuild();
+  });
+
   let reloaded = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (reloaded) return;
     reloaded = true;
     window.location.reload();
   });
+}
+
+/** Compares the app files this page runs with the ones on the server. */
+async function checkForNewBuild() {
+  try {
+    const current = document.querySelector<HTMLScriptElement>('script[type="module"][src*="/assets/"]')?.src;
+    if (!current) return;
+    const html = await (await fetch('/index.html', { cache: 'no-store' })).text();
+    const latest = html.match(/src="([^"]*\/assets\/[^"]+\.js)"/)?.[1];
+    if (latest && !current.endsWith(latest)) { newBuild = true; emit(); }
+  } catch { /* offline */ }
 }
 
 export const isStandalone = () =>
@@ -70,7 +92,11 @@ export function useInstall() {
 /** A new version is downloaded and waiting */
 export function useUpdateReady() {
   const worker = useSyncExternalStore(subscribe, () => waitingWorker);
-  return { ready: !!worker, apply: () => worker?.postMessage('SKIP_WAITING') };
+  const fresh = useSyncExternalStore(subscribe, () => newBuild);
+  return {
+    ready: !!worker || fresh,
+    apply: () => (worker ? worker.postMessage('SKIP_WAITING') : window.location.reload()),
+  };
 }
 
 export function useOnline() {

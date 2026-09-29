@@ -36,6 +36,9 @@ export interface PurchaseOrder {
   ordered_on: string;
   expected_on: string | null;
   received_on: string | null;
+  created_by: string | null;
+  received_by: string | null;
+  created_at: string;
   transport: string | null;
   tracking_ref: string | null;
   shipping_cost: number;

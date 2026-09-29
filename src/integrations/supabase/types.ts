@@ -271,6 +271,48 @@ export type Database = {
           },
         ]
       }
+      notification_prefs: {
+        Row: {
+          daily_summary: boolean
+          debt_due: boolean
+          debt_due_days: number
+          debt_overdue: boolean
+          low_stock: boolean
+          orders: boolean
+          sale_cancelled: boolean
+          sales: boolean
+          temp_stock: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          daily_summary?: boolean
+          debt_due?: boolean
+          debt_due_days?: number
+          debt_overdue?: boolean
+          low_stock?: boolean
+          orders?: boolean
+          sale_cancelled?: boolean
+          sales?: boolean
+          temp_stock?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          daily_summary?: boolean
+          debt_due?: boolean
+          debt_due_days?: number
+          debt_overdue?: boolean
+          low_stock?: boolean
+          orders?: boolean
+          sale_cancelled?: boolean
+          sales?: boolean
+          temp_stock?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -362,6 +404,7 @@ export type Database = {
           notes: string | null
           ordered_on: string
           po_no: number
+          received_by: string | null
           received_on: string | null
           shipping_cost: number
           status: string
@@ -380,6 +423,7 @@ export type Database = {
           notes?: string | null
           ordered_on?: string
           po_no?: never
+          received_by?: string | null
           received_on?: string | null
           shipping_cost?: number
           status?: string
@@ -398,6 +442,7 @@ export type Database = {
           notes?: string | null
           ordered_on?: string
           po_no?: never
+          received_by?: string | null
           received_on?: string | null
           shipping_cost?: number
           status?: string
@@ -577,6 +622,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      shop_settings: {
+        Row: {
+          email: string | null
+          id: number
+          location: string | null
+          logo_url: string | null
+          name: string
+          phone: string | null
+          receipt_footer: string | null
+          tagline: string | null
+          tin: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          email?: string | null
+          id?: number
+          location?: string | null
+          logo_url?: string | null
+          name?: string
+          phone?: string | null
+          receipt_footer?: string | null
+          tagline?: string | null
+          tin?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          email?: string | null
+          id?: number
+          location?: string | null
+          logo_url?: string | null
+          name?: string
+          phone?: string | null
+          receipt_footer?: string | null
+          tagline?: string | null
+          tin?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       shop_colors: {
         Row: {
