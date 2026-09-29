@@ -195,13 +195,7 @@ export function useStockItems() {
     }) => {
       const { data, error } = await supabase.from('stock_items').update(fields).eq('id', id).select().single();
       if (error) throw error;
-
-      if (user?.id) {
-        await supabase.from('activity_logs').insert({
-          user_id: user.id, action: 'updated', entity_type: 'stock_item', entity_id: id,
-          details: JSON.parse(JSON.stringify(fields)),
-        });
-      }
+      // The database logs the change (and alerts the owner) by itself
       return data;
     },
     onSuccess: () => {
@@ -240,12 +234,7 @@ export function useStockItems() {
   const deleteItem = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('stock_items').delete().eq('id', id);
-      if (error) throw error;
-      if (user?.id) {
-        await supabase.from('activity_logs').insert({
-          user_id: user.id, action: 'deleted', entity_type: 'stock_item', entity_id: id,
-        });
-      }
+      if (error) throw error; // the database logs the deletion (and alerts the owner)
     },
     onSuccess: () => {
       invalidateStock();

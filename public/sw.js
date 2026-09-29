@@ -3,7 +3,7 @@
  * and still shows the app shell on a bad connection. Shop data (Supabase API)
  * is never cached: stock, sales and debts are always live.
  */
-const VERSION = 'v3';
+const VERSION = 'v4';
 const SHELL = `shell-${VERSION}`;
 const ASSETS = `assets-${VERSION}`;
 const PHOTOS = 'item-photos';

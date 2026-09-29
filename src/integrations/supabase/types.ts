@@ -273,6 +273,10 @@ export type Database = {
       }
       notification_prefs: {
         Row: {
+          customers: boolean
+          new_accounts: boolean
+          payments: boolean
+          stock_changes: boolean
           daily_summary: boolean
           debt_due: boolean
           debt_due_days: number
@@ -286,6 +290,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          customers?: boolean
+          new_accounts?: boolean
+          payments?: boolean
+          stock_changes?: boolean
           daily_summary?: boolean
           debt_due?: boolean
           debt_due_days?: number
@@ -299,6 +307,10 @@ export type Database = {
           user_id?: string
         }
         Update: {
+          customers?: boolean
+          new_accounts?: boolean
+          payments?: boolean
+          stock_changes?: boolean
           daily_summary?: boolean
           debt_due?: boolean
           debt_due_days?: number
@@ -625,6 +637,7 @@ export type Database = {
       }
       shop_settings: {
         Row: {
+          supervisor_alerts: string[]
           email: string | null
           id: number
           location: string | null
@@ -638,6 +651,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          supervisor_alerts?: string[]
           email?: string | null
           id?: number
           location?: string | null
@@ -651,6 +665,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          supervisor_alerts?: string[]
           email?: string | null
           id?: number
           location?: string | null
@@ -1033,6 +1048,7 @@ export type Database = {
       }
     }
     Functions: {
+      notification_overview: { Args: never; Returns: Json }
       add_stock_variant: {
         Args: {
           p_color: string
@@ -1146,7 +1162,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "storekeeper" | "owner"
+      app_role: "admin" | "storekeeper" | "owner" | "supervisor"
       stock_status: "in_stock" | "out_of_stock" | "low_stock"
     }
     CompositeTypes: {
@@ -1275,7 +1291,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "storekeeper", "owner"],
+      app_role: ["admin", "storekeeper", "owner", "supervisor"],
       stock_status: ["in_stock", "out_of_stock", "low_stock"],
     },
   },

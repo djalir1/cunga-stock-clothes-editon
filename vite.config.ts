@@ -9,6 +9,10 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8010,
   },
+  define: {
+    // Shown in Settings → About this app, e.g. "2026.09.29 15:40"
+    __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 16).replace("T", " ").replace(/-/g, ".")),
+  },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {

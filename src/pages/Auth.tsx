@@ -126,7 +126,7 @@ export default function Auth() {
               className="w-full h-full object-contain"
             />
           </div>
-          <CardTitle className="text-2xl font-bold">Cunga Stock</CardTitle>
+          <CardTitle className="text-2xl font-bold">Cunga Stock Clothing</CardTitle>
           <CardDescription>Inventory management, tailored to your business</CardDescription>
         </CardHeader>
         <CardContent>

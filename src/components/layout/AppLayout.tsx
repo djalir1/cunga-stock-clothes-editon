@@ -190,7 +190,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       />
                       <div>
                         <h1 className="font-bold text-lg leading-none text-sidebar-foreground">Cunga Stock</h1>
-                        <p className="text-xs text-sidebar-foreground/60">Management System</p>
+                        <p className="text-xs text-sidebar-foreground/60">Clothing</p>
                       </div>
                     </div>
 

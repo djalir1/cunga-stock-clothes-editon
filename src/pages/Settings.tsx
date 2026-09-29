@@ -11,7 +11,6 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { 
   User, 
-  Bell, 
   Shield, 
   Palette, 
   Database,
@@ -26,8 +25,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ROLE_LABELS } from '@/lib/types';
 import { TeamSection } from '@/components/settings/TeamSection';
-import { SaleAlerts } from '@/components/pwa/SaleAlerts';
+import { SaleAlerts, SupervisorAlertsSection } from '@/components/pwa/SaleAlerts';
 import { ShopProfile } from '@/components/settings/ShopProfile';
+import { DeveloperAlertsOverview } from '@/components/settings/DeveloperAlertsOverview';
 
 export default function Settings() {
   const { user, profile, role, isOwner, signOut } = useAuth();
@@ -35,14 +35,6 @@ export default function Settings() {
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [isSaving, setIsSaving] = useState(false);
   
-  // Notification settings (local state for demo)
-  const [notifications, setNotifications] = useState({
-    lowStock: true,
-    stockMovements: true,
-    dailyReport: false,
-    emailAlerts: true,
-  });
-
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -158,85 +150,37 @@ export default function Settings() {
 
       <ShopProfile />
 
-      {(role === 'owner' || role === 'admin') && <SaleAlerts />}
+      {(role === 'owner' || role === 'admin' || role === 'supervisor') && <SaleAlerts />}
+
+      {role === 'admin' && <DeveloperAlertsOverview />}
 
       {isOwner && <TeamSection />}
 
-      {/* Notifications Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="w-5 h-5" />
-            Notifications
-          </CardTitle>
-          <CardDescription>Configure your notification preferences</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Low Stock Alerts</p>
-              <p className="text-sm text-muted-foreground">Get notified when items are running low</p>
-            </div>
-            <Switch 
-              checked={notifications.lowStock} 
-              onCheckedChange={(checked) => setNotifications({ ...notifications, lowStock: checked })}
-            />
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Stock Movements</p>
-              <p className="text-sm text-muted-foreground">Notifications for stock in/out activities</p>
-            </div>
-            <Switch 
-              checked={notifications.stockMovements} 
-              onCheckedChange={(checked) => setNotifications({ ...notifications, stockMovements: checked })}
-            />
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Daily Summary Report</p>
-              <p className="text-sm text-muted-foreground">Receive daily stock summary via email</p>
-            </div>
-            <Switch 
-              checked={notifications.dailyReport} 
-              onCheckedChange={(checked) => setNotifications({ ...notifications, dailyReport: checked })}
-            />
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Email Alerts</p>
-              <p className="text-sm text-muted-foreground">Receive important alerts via email</p>
-            </div>
-            <Switch 
-              checked={notifications.emailAlerts} 
-              onCheckedChange={(checked) => setNotifications({ ...notifications, emailAlerts: checked })}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {isOwner && <SupervisorAlertsSection />}
 
-      {/* System Info */}
+      {/* About the app */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Database className="w-5 h-5" />
-            System Information
+            About this app
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="p-4 rounded-lg bg-muted/50">
-              <p className="text-sm text-muted-foreground">Version</p>
-              <p className="font-mono font-semibold">1.0.0</p>
+              <p className="text-sm text-muted-foreground">App</p>
+              <p className="font-semibold">Cunga Stock Clothing</p>
             </div>
             <div className="p-4 rounded-lg bg-muted/50">
-              <p className="text-sm text-muted-foreground">Last Login</p>
-              <p className="font-semibold">{new Date().toLocaleDateString()}</p>
+              <p className="text-sm text-muted-foreground">Version</p>
+              <p className="font-mono font-semibold">{__BUILD_DATE__}</p>
             </div>
           </div>
+          <p className="text-sm text-muted-foreground">
+            Updates install by themselves. When a new version is published, the app refreshes the next time you open it —
+            no need to remove it from your home screen.
+          </p>
         </CardContent>
       </Card>
 

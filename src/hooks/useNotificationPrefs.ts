@@ -14,14 +14,19 @@ export interface NotificationPrefs {
   orders: boolean;
   temp_stock: boolean;
   daily_summary: boolean;
+  stock_changes: boolean;
+  payments: boolean;
+  customers: boolean;
+  new_accounts: boolean;
 }
 
 export const DEFAULT_PREFS: NotificationPrefs = {
   sales: true, sale_cancelled: true, low_stock: true, debt_due: true, debt_due_days: 2,
   debt_overdue: true, orders: true, temp_stock: true, daily_summary: true,
+  stock_changes: true, payments: true, customers: true, new_accounts: true,
 };
 
-/** Which phone alerts the owner / supervisor wants (everything is on until they change it). */
+/** Which phone alerts the owner / developers wants (everything is on until they change it). */
 export function useNotificationPrefs() {
   const { user } = useAuth();
   const queryClient = useQueryClient();

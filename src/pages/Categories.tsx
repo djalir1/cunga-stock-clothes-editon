@@ -31,7 +31,7 @@ export default function Categories() {
   const [newCategory, setNewCategory] = useState({ name: '', description: '', color: '#3B82F6' });
   const [editData, setEditData] = useState({ name: '', description: '', color: '#3B82F6' });
 
-  // Safety check: Prevents supervisor from triggering mutation even if they find a way to click
+  // Safety check: Prevents view-only accounts from triggering mutation even if they find a way to click
   const isKeeper = canEdit;
 
   const handleAddCategory = () => {

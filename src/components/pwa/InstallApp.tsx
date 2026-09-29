@@ -12,7 +12,7 @@ function IosSteps({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Add Cunga Stock to your iPhone</DialogTitle>
+          <DialogTitle>Add Cunga Stock Clothing to your iPhone</DialogTitle>
           <DialogDescription>It opens like a normal app, full screen.</DialogDescription>
         </DialogHeader>
         <ol className="space-y-3 text-sm">
@@ -58,7 +58,7 @@ export function InstallCard() {
       <CardContent className="p-4 flex items-center gap-4">
         <img src="/icon-maskable-192.png" alt="" className="w-12 h-12 rounded-xl shadow-sm" />
         <div className="flex-1 min-w-0">
-          <p className="font-semibold flex items-center gap-1.5"><Smartphone className="w-4 h-4 text-primary" /> Put Cunga Stock on your phone</p>
+          <p className="font-semibold flex items-center gap-1.5"><Smartphone className="w-4 h-4 text-primary" /> Put Cunga Stock Clothing on your phone</p>
           <p className="text-sm text-muted-foreground">Opens in one tap from the home screen, full screen and faster.</p>
         </div>
         <Button className="gap-2 shrink-0" onClick={() => (state === 'prompt' ? install() : setIos(true))}>

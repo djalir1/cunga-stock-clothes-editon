@@ -1,4 +1,4 @@
-// Phone notifications (Web Push) for the owner / supervisor.
+// Phone notifications (Web Push) for the owner, the developers (admin role) and supervisors.
 //
 // Actions (POST JSON):
 //   { action: "public_key" }            → VAPID public key phones subscribe with (created on first use)
@@ -9,7 +9,10 @@
 //   { action: "order_received", order_id, actor }
 //   { action: "daily" }                 → 08:00 reminders: debts due / overdue, deliveries, temporary stock,
 //                                          low stock, yesterday's sales
-// Who gets what: owner + supervisor, filtered by their notification_prefs (all on by default).
+//   { action: "activity", kind, … }     → every other action: stock added / edited / deleted, payments,
+//                                          customers, temporary stock, new / cancelled orders, new accounts
+// Who gets what: owner + developers get everything they switch on (notification_prefs, all on by default);
+// supervisors only the kinds the owner allows (shop_settings.supervisor_alerts). Storekeepers get none.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import webpush from "npm:web-push@3.6.7";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -33,7 +36,8 @@ const METHOD: Record<string, string> = { cash: "Cash", mobile_money: "Mobile Mon
 const kigaliDate = (offsetDays = 0) => new Date(Date.now() + 2 * 3600e3 + offsetDays * 86400e3).toISOString().slice(0, 10);
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-type PrefKey = "sales" | "sale_cancelled" | "low_stock" | "debt_due" | "debt_overdue" | "orders" | "temp_stock" | "daily_summary";
+type PrefKey = "sales" | "sale_cancelled" | "low_stock" | "debt_due" | "debt_overdue" | "orders" | "temp_stock" | "daily_summary"
+  | "stock_changes" | "payments" | "customers" | "new_accounts";
 interface Prefs { user_id: string; debt_due_days: number; [k: string]: unknown }
 interface Sub { id: string; endpoint: string; p256dh: string; auth: string; user_id: string; include_own: boolean }
 interface Message { title: string; body: string; url: string; tag: string }
@@ -56,15 +60,26 @@ async function config(): Promise<Config> {
   return cfg;
 }
 
-/** Owner + supervisor accounts with their preferences (missing row = everything on) */
+/**
+ * Owner + developers (admin) + supervisors, with their preferences (missing row = everything on).
+ * Supervisors only get the kinds the owner allows (shop_settings.supervisor_alerts).
+ */
 async function recipients(): Promise<Map<string, Prefs>> {
-  const { data: roles } = await db.from("user_roles").select("user_id").in("role", ["owner", "admin"]);
+  const [{ data: roles }, { data: shop }] = await Promise.all([
+    db.from("user_roles").select("user_id, role").in("role", ["owner", "admin", "supervisor"]),
+    db.from("shop_settings").select("supervisor_alerts").eq("id", 1).maybeSingle(),
+  ]);
   const ids = (roles ?? []).map(r => r.user_id);
   const { data: prefs } = ids.length ? await db.from("notification_prefs").select("*").in("user_id", ids) : { data: [] };
   const byUser = new Map((prefs ?? []).map(p => [p.user_id, p as Prefs]));
-  return new Map(ids.map(id => [id, byUser.get(id) ?? { user_id: id, debt_due_days: 2 }]));
+  const allowed = (shop?.supervisor_alerts ?? []) as string[];
+  return new Map((roles ?? []).map(r => [r.user_id, {
+    ...(byUser.get(r.user_id) ?? { user_id: r.user_id, debt_due_days: 2 }),
+    allowed: r.role === "supervisor" ? allowed : null,
+  }]));
 }
-const wants = (p: Prefs, key: PrefKey) => p[key] !== false;
+const wants = (p: Prefs, key: PrefKey) =>
+  p[key] !== false && (!Array.isArray(p.allowed) || (p.allowed as string[]).includes(key));
 
 async function devices(userIds: string[]): Promise<Sub[]> {
   if (!userIds.length) return [];
@@ -173,6 +188,187 @@ async function orderAlert(orderId: string, actor: string | null) {
   }, actor);
 }
 
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+const variantLabel = (size?: string | null, color?: string | null) => {
+  const v = [size, color].filter(Boolean).join(", ");
+  return v ? ` (${v})` : "";
+};
+const list = (parts: string[], max = 3) =>
+  `${parts.slice(0, max).join(", ")}${parts.length > max ? ` +${parts.length - max} more` : ""}`;
+const money = (v: unknown) => (v == null ? "no price" : rwf(Number(v)));
+
+interface LogRow { id: string; user_id: string | null; entity_id: string | null; details: Record<string, unknown>; created_at: string }
+async function log(id: string | undefined) {
+  if (!id) return null;
+  const { data } = await db.from("activity_logs").select("id, user_id, entity_id, details, created_at").eq("id", id).maybeSingle();
+  return data as LogRow | null;
+}
+
+interface ActivityBody {
+  kind?: string; log_id?: string; item_id?: string; order_id?: string; checkout_id?: string;
+  customer_id?: string; user_id?: string; at?: string;
+}
+
+/** Every action that isn't a sale: one clear message each */
+async function activityAlert(b: ActivityBody, actor: string | null) {
+  const who = await firstName(actor);
+  switch (b.kind) {
+    case "item_created": {
+      const { data: item } = await db.from("stock_items")
+        .select("id, name, quantity, stock_variants(size, color, default_price)").eq("id", b.item_id!).maybeSingle();
+      if (!item) return { sent: 0 };
+      const variants = (item.stock_variants ?? []) as { default_price: number | null }[];
+      const prices = [...new Set(variants.map(v => v.default_price).filter(p => p != null))];
+      return broadcast("stock_changes", {
+        title: `New item: ${item.name}`,
+        body: `${who} added ${plural(item.quantity, "piece")}${variants.length > 1 ? ` in ${variants.length} sizes/colours` : ""}${prices.length ? `, selling at ${prices.map(money).join(" / ")}` : ""}.`,
+        url: `/stock?q=${encodeURIComponent(item.name)}`, tag: `item-${item.id}`,
+      }, actor);
+    }
+    case "item_deleted": {
+      const l = await log(b.log_id);
+      if (!l) return { sent: 0 };
+      const qty = Number(l.details.quantity ?? 0);
+      return broadcast("stock_changes", {
+        title: `Item deleted: ${l.details.name}`,
+        body: `${who} deleted ${l.details.name}${qty ? ` (${plural(qty, "piece")} were still in stock)` : ""}.`,
+        url: "/movements", tag: `item-${l.entity_id}`,
+      }, actor);
+    }
+    case "item_edited": {
+      // Saving an item can change its details and several prices one after another:
+      // wait a moment, then only the latest change sends one alert that covers them all.
+      await sleep(2500); // stays under the database's 5 s call timeout
+      const l = await log(b.log_id);
+      if (!l) return { sent: 0 };
+      const since = new Date(new Date(l.created_at).getTime() - 60_000).toISOString();
+      const { data: logs } = await db.from("activity_logs").select("id, details, created_at")
+        .eq("action", "updated").eq("entity_type", "stock_item").eq("entity_id", l.entity_id!)
+        .gte("created_at", since).order("created_at");
+      const all = (logs ?? []) as { id: string; details: Record<string, unknown> }[];
+      if (all.length && all[all.length - 1].id !== l.id) return { sent: 0, reason: "a newer change will be sent" };
+      const changes: string[] = [];
+      const prices: string[] = [];
+      for (const { details: d } of all) {
+        const pair = (k: string) => d[k] as [unknown, unknown] | undefined;
+        if (pair("name")) changes.push(`renamed from "${pair("name")![0]}"`);
+        if (pair("price")) prices.push(`${d.variant ? `${d.variant}: ` : ""}${money(pair("price")![0])} → ${money(pair("price")![1])}`);
+        if (pair("cost")) changes.push(`cost ${money(pair("cost")![0])} → ${money(pair("cost")![1])}`);
+        if (pair("min_quantity")) changes.push(`low-stock warning now at ${pair("min_quantity")![1]}`);
+        if (d.category) changes.push("category changed");
+        if (d.photo) changes.push("new photo");
+        if (d.notes) changes.push("notes changed");
+      }
+      if (prices.length) changes.unshift(`price ${list(prices)}`);
+      const name = String(all.at(-1)?.details.item ?? l.details.item ?? "An item");
+      return broadcast("stock_changes", {
+        title: prices.length ? `Price changed: ${name}` : `Item changed: ${name}`,
+        body: `${who} changed ${name}: ${[...new Set(changes)].join("; ") || "details updated"}.`,
+        url: `/stock?q=${encodeURIComponent(name)}`, tag: `edit-${l.entity_id}`,
+      }, actor);
+    }
+    case "stock_moves": {
+      const l = await log(b.log_id);
+      if (!l) return { sent: 0 };
+      const lines = (l.details.lines ?? []) as { item: string; size: string | null; color: string | null; quantity: number; type: string; note: string | null }[];
+      if (!lines.length) return { sent: 0 };
+      const pieces = lines.reduce((s, x) => s + x.quantity, 0);
+      const isNew = lines.every(x => x.note === "Initial stock");
+      const corrected = lines.some(x => x.type === "adjusted");
+      return broadcast("stock_changes", {
+        title: corrected ? "Stock corrected" : isNew ? "New size/colour added" : `Stock added · ${plural(pieces, "piece")}`,
+        body: `${who} ${corrected ? "corrected" : "added"} ${list(lines.map(x => `${Math.abs(x.quantity)}× ${x.item}${variantLabel(x.size, x.color)}`))}${lines[0].note && !isNew ? `. Note: ${lines[0].note}` : ""}.`,
+        url: `/stock?q=${encodeURIComponent(lines[0].item)}`, tag: `moves-${l.id}`,
+      }, actor);
+    }
+    case "payment": {
+      const { data: pays } = await db.from("debt_payments")
+        .select("amount, method, debts(customer_id, customers(name))")
+        .eq("created_at", b.at!).eq("is_initial", false);
+      const rows = (pays ?? []) as unknown as { amount: number; method: string; debts: { customer_id: string | null; customers: { name: string } | null } | null }[];
+      if (!rows.length) return { sent: 0 };
+      const total = rows.reduce((s, r) => s + Number(r.amount), 0);
+      const name = rows[0].debts?.customers?.name ?? "A customer";
+      const customerId = rows[0].debts?.customer_id;
+      let still = "";
+      if (customerId) {
+        const { data: bal } = await db.from("debt_balances").select("balance").eq("customer_id", customerId);
+        const left = (bal ?? []).reduce((s, x) => s + Number(x.balance), 0);
+        still = left > 0 ? ` Still owes ${rwf(left)}.` : " All paid up now.";
+      }
+      return broadcast("payments", {
+        title: `Payment received · ${rwf(total)}`,
+        body: `${name} paid ${rwf(total)} (${METHOD[rows[0].method] ?? rows[0].method}). Recorded by ${who}.${still}`,
+        url: "/debts", tag: `pay-${b.at}`,
+      }, actor);
+    }
+    case "customer_added": {
+      const { data: c } = await db.from("customers").select("id, name, phone").eq("id", b.customer_id!).maybeSingle();
+      if (!c) return { sent: 0 };
+      return broadcast("customers", {
+        title: `New customer: ${c.name}`,
+        body: `${who} added ${c.name}${c.phone ? ` (${c.phone})` : ""} to your customers.`,
+        url: "/customers", tag: `customer-${c.id}`,
+      }, actor);
+    }
+    case "temp_out":
+    case "temp_returned": {
+      const { data: t } = await db.from("temp_stock_checkouts")
+        .select("id, customer_name, item_name, size, color, quantity, deposit, expected_return_date").eq("id", b.checkout_id!).maybeSingle();
+      if (!t) return { sent: 0 };
+      const what = `${t.quantity}× ${t.item_name}${variantLabel(t.size, t.color)}`;
+      return broadcast("temp_stock", b.kind === "temp_out" ? {
+        title: `Taken on approval: ${what}`,
+        body: `${t.customer_name} took ${what}${Number(t.deposit) > 0 ? ` and left a deposit of ${rwf(Number(t.deposit))}` : ""}${t.expected_return_date ? `. Should decide by ${t.expected_return_date}` : ""}. Given by ${who}.`,
+        url: "/temporary-stock", tag: `temp-${t.id}`,
+      } : {
+        title: `Brought back: ${what}`,
+        body: `${t.customer_name} returned ${what}. It's back on the shelf. Checked in by ${who}.`,
+        url: "/temporary-stock", tag: `temp-${t.id}`,
+      }, actor);
+    }
+    case "temp_deleted": {
+      const l = await log(b.log_id);
+      if (!l) return { sent: 0 };
+      const d = l.details;
+      return broadcast("temp_stock", {
+        title: "Temporary stock record deleted",
+        body: `${who} deleted ${d.customer}'s record for ${d.quantity}× ${d.item}${d.status === "out" ? " (the clothes went back on the shelf)" : ""}.`,
+        url: "/temporary-stock", tag: `temp-${l.entity_id}`,
+      }, actor);
+    }
+    case "order_created":
+    case "order_cancelled": {
+      const { data: o } = await db.from("purchase_orders")
+        .select("id, po_no, supplier_name, expected_on, purchase_order_lines(quantity_ordered, unit_cost)").eq("id", b.order_id!).maybeSingle();
+      if (!o) return { sent: 0 };
+      const lines = (o.purchase_order_lines ?? []) as { quantity_ordered: number; unit_cost: number | null }[];
+      const pieces = lines.reduce((s, l) => s + l.quantity_ordered, 0);
+      const cost = lines.reduce((s, l) => s + l.quantity_ordered * Number(l.unit_cost ?? 0), 0);
+      const from = o.supplier_name ? ` from ${o.supplier_name}` : "";
+      return broadcast("orders", b.kind === "order_created" ? {
+        title: `New order #${o.po_no}${from}`,
+        body: `${who} ordered ${plural(pieces, "piece")}${cost ? ` for ${rwf(cost)}` : ""}${o.expected_on ? `. Expected ${o.expected_on}` : ""}.`,
+        url: "/orders", tag: `order-${o.id}`,
+      } : {
+        title: `Order #${o.po_no} cancelled`,
+        body: `${who} cancelled order #${o.po_no}${from} (${plural(pieces, "piece")}).`,
+        url: "/orders", tag: `order-${o.id}`,
+      }, actor);
+    }
+    case "new_account": {
+      const { data: p } = await db.from("profiles").select("full_name").eq("user_id", b.user_id!).maybeSingle();
+      return broadcast("new_accounts", {
+        title: "New account waiting for approval",
+        body: `${p?.full_name ?? "Someone"} signed up. Open Settings → Team & Access to let them in.`,
+        url: "/settings", tag: `account-${b.user_id}`,
+      }, null);
+    }
+    default:
+      return { error: "Unknown kind" };
+  }
+}
+
 /** 08:00 reminders — each person gets only the kinds they chose */
 async function daily() {
   const today = kigaliDate(), tomorrow = kigaliDate(1), yesterday = kigaliDate(-1);
@@ -258,7 +454,7 @@ Deno.serve(async req => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
 
-  let body: { action?: string; sale_id?: string; item_id?: string; order_id?: string; actor?: string | null };
+  let body: ActivityBody & { action?: string; sale_id?: string; actor?: string | null };
   try { body = await req.json(); } catch { return json({ error: "Bad JSON" }, 400); }
 
   try {
@@ -292,6 +488,8 @@ Deno.serve(async req => {
         return json(body.order_id ? await orderAlert(body.order_id, actor) : { error: "order_id required" });
       case "daily":
         return json(await daily());
+      case "activity":
+        return json(await activityAlert(body, actor));
       default:
         return json({ error: "Unknown action" }, 400);
     }

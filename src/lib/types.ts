@@ -1,10 +1,13 @@
 export type StockStatus = 'in_stock' | 'out_of_stock' | 'low_stock';
-export type AppRole = 'owner' | 'storekeeper' | 'admin';
+// 'admin' = the developers who build and look after the app (view-only in the shop, can get every alert)
+// 'supervisor' = views everything and makes reports; gets only the alerts the owner allows
+export type AppRole = 'owner' | 'storekeeper' | 'supervisor' | 'admin';
 
 export const ROLE_LABELS: Record<AppRole, string> = {
   owner: 'Owner',
   storekeeper: 'Storekeeper',
-  admin: 'Supervisor (view only)',
+  supervisor: 'Supervisor (view & reports)',
+  admin: 'Developer',
 };
 // 'issued' = sold · 'loaned' = out with a customer on approval · 'loan_returned' = back on the shelf
 export type MovementType = 'added' | 'issued' | 'returned' | 'adjusted' | 'loaned' | 'loan_returned';

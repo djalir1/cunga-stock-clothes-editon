@@ -4,59 +4,155 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
-import { BellRing, BellOff, Share, Send, X } from 'lucide-react';
+import { BellRing, BellOff, Share, Send, X, ShieldCheck } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSupervisorAlerts, type AlertKey } from '@/hooks/useSupervisorAlerts';
+import { cn } from '@/lib/utils';
 import { useNotificationPrefs, type NotificationPrefs } from '@/hooks/useNotificationPrefs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const KINDS: { key: keyof NotificationPrefs; label: string; hint: string }[] = [
-  { key: 'sales', label: 'Every sale', hint: 'Who bought what, for how much, who sold it' },
-  { key: 'sale_cancelled', label: 'Cancelled sales', hint: 'When a sale is cancelled, with the reason' },
-  { key: 'low_stock', label: 'Restock reminders', hint: 'When an item runs low or sells out, and every morning' },
-  { key: 'debt_due', label: 'Debts coming due', hint: 'Customers who should pay soon' },
-  { key: 'debt_overdue', label: 'Late payments', hint: 'Customers past their promised date' },
-  { key: 'orders', label: 'Orders & deliveries', hint: 'Deliveries due today/tomorrow, late, or arrived' },
-  { key: 'temp_stock', label: 'Temporary stock', hint: 'Clothes that should come back today or are late' },
-  { key: 'daily_summary', label: "Yesterday's sales", hint: 'A short summary every morning at 8:00' },
+type Kind = { key: keyof NotificationPrefs; label: string; hint: string };
+
+/** Every kind of alert, grouped the way the shop works. Also used by the developers' overview. */
+export const ALERT_GROUPS: { title: string; kinds: Kind[] }[] = [
+  {
+    title: 'Selling',
+    kinds: [
+      { key: 'sales', label: 'Every sale', hint: 'Who bought what, for how much, and who sold it' },
+      { key: 'sale_cancelled', label: 'Cancelled sales', hint: 'When a sale is cancelled, with the reason' },
+      { key: 'payments', label: 'Customer payments', hint: 'When a customer pays back money they owe' },
+      { key: 'customers', label: 'New customers', hint: 'When staff add a new customer' },
+    ],
+  },
+  {
+    title: 'Stock',
+    kinds: [
+      { key: 'stock_changes', label: 'Stock changes', hint: 'Items added, restocked, edited, deleted, and price changes' },
+      { key: 'low_stock', label: 'Running low / sold out', hint: 'When an item runs low or sells out, and every morning' },
+      { key: 'temp_stock', label: 'Temporary stock', hint: 'Clothes taken on approval, brought back, or late' },
+      { key: 'orders', label: 'Orders & deliveries', hint: 'New orders, arrivals, cancellations, late deliveries' },
+    ],
+  },
+  {
+    title: 'Money owed & reminders',
+    kinds: [
+      { key: 'debt_due', label: 'Debts coming due', hint: 'Customers who should pay soon' },
+      { key: 'debt_overdue', label: 'Late payments', hint: 'Customers past their promised date' },
+      { key: 'daily_summary', label: "Yesterday's sales", hint: 'A short summary every morning at 8:00' },
+    ],
+  },
+  {
+    title: 'Team',
+    kinds: [
+      { key: 'new_accounts', label: 'New accounts', hint: 'Someone signed up and is waiting for you to let them in' },
+    ],
+  },
 ];
+export const ALL_KINDS = ALERT_GROUPS.flatMap(g => g.kinds);
 
 /** The kinds of alerts this person wants (saved on the account, used for every device) */
 function AlertChoices() {
+  const { role } = useAuth();
   const { prefs, update } = useNotificationPrefs();
+  const { allowed } = useSupervisorAlerts();
+  // Supervisors only see the kinds the owner allows them
+  const isSupervisor = role === 'supervisor';
+  const groups = ALERT_GROUPS
+    .map(g => ({ ...g, kinds: g.kinds.filter(k => !isSupervisor || allowed.includes(k.key as AlertKey)) }))
+    .filter(g => g.kinds.length);
+  const kinds = groups.flatMap(g => g.kinds);
+  const onCount = kinds.filter(k => prefs[k.key]).length;
+  const setAll = (value: boolean) => update.mutate(Object.fromEntries(kinds.map(k => [k.key, value])) as Partial<NotificationPrefs>);
+
+  if (isSupervisor && kinds.length === 0) {
+    return <p className="text-sm text-muted-foreground pt-3 border-t border-border">The owner hasn't allowed any alerts for supervisors yet.</p>;
+  }
+
   return (
-    <div className="space-y-2 pt-2 border-t border-border">
-      <p className="text-sm font-semibold">What to notify me about</p>
-      <div className="divide-y divide-border rounded-lg border border-border">
-        {KINDS.map(k => (
-          <div key={k.key} className="flex items-center justify-between gap-3 px-3 py-2.5">
-            <div className="min-w-0">
-              <p className="text-sm font-medium">{k.label}</p>
-              <p className="text-xs text-muted-foreground">{k.hint}</p>
-              {k.key === 'debt_due' && prefs.debt_due && (
-                <div className="flex items-center gap-2 mt-1.5 text-xs">
-                  <span>Remind me</span>
-                  <Select value={String(prefs.debt_due_days)} onValueChange={v => update.mutate({ debt_due_days: Number(v) })}>
-                    <SelectTrigger className="h-7 w-32 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {[0, 1, 2, 3, 5, 7].map(d => <SelectItem key={d} value={String(d)}>{d === 0 ? 'on the day' : `${d} day${d > 1 ? 's' : ''} before`}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
-            <Switch checked={prefs[k.key] as boolean} onCheckedChange={v => update.mutate({ [k.key]: v })} />
-          </div>
-        ))}
+    <div className="space-y-3 pt-3 border-t border-border">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-semibold">
+          What to notify me about <span className="font-normal text-muted-foreground">· {onCount} of {kinds.length} on</span>
+        </p>
+        <div className="flex gap-1.5">
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setAll(true)} disabled={onCount === kinds.length}>Turn all on</Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAll(false)} disabled={onCount === 0}>Turn all off</Button>
+        </div>
       </div>
-      <p className="text-xs text-muted-foreground">Morning reminders arrive at 8:00. Storekeepers don't receive alerts.</p>
+      {groups.map(group => (
+        <div key={group.title} className="space-y-1.5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.title}</p>
+          <div className="divide-y divide-border rounded-lg border border-border">
+            {group.kinds.map(k => (
+              <div key={k.key} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">{k.label}</p>
+                  <p className="text-xs text-muted-foreground">{k.hint}</p>
+                  {k.key === 'debt_due' && prefs.debt_due && (
+                    <div className="flex items-center gap-2 mt-1.5 text-xs">
+                      <span>Remind me</span>
+                      <Select value={String(prefs.debt_due_days)} onValueChange={v => update.mutate({ debt_due_days: Number(v) })}>
+                        <SelectTrigger className="h-7 w-32 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {[0, 1, 2, 3, 5, 7].map(d => <SelectItem key={d} value={String(d)}>{d === 0 ? 'on the day' : `${d} day${d > 1 ? 's' : ''} before`}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+                <Switch aria-label={k.label} checked={prefs[k.key] as boolean} onCheckedChange={v => update.mutate({ [k.key]: v })} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+      <p className="text-xs text-muted-foreground">
+        These choices apply to all your phones and computers. Morning reminders arrive at 8:00.
+        {isSupervisor ? ' The owner decides which alerts supervisors can get.' : " Storekeepers don't receive phone alerts."}
+      </p>
     </div>
+  );
+}
+
+/** Owner: which alerts supervisors are allowed to receive */
+export function SupervisorAlertsSection() {
+  const { allowed, save } = useSupervisorAlerts();
+  const toggle = (key: AlertKey, on: boolean) =>
+    save.mutate(on ? [...new Set([...allowed, key])] : allowed.filter(k => k !== key));
+
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3">
+        <div>
+          <p className="font-semibold flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-primary" /> Alerts supervisors can get</p>
+          <p className="text-sm text-muted-foreground">
+            Supervisors can see everything and make reports, but can't change anything. Choose which phone alerts they may receive —
+            each supervisor can then switch these on or off for themselves.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {ALL_KINDS.map(k => {
+            const on = allowed.includes(k.key as AlertKey);
+            return (
+              <button key={k.key} type="button" onClick={() => toggle(k.key as AlertKey, !on)} title={k.hint}
+                className={cn('rounded-full border px-3 py-1.5 text-sm transition-colors',
+                  on ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border text-muted-foreground hover:bg-muted')}>
+                {on ? '✓ ' : ''}{k.label}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground">{allowed.length} of {ALL_KINDS.length} allowed. Tap to allow or block.</p>
+      </CardContent>
+    </Card>
   );
 }
 
 const DISMISS_KEY = 'cunga-alerts-card-dismissed';
 
 /**
- * Owner / supervisor: get a notification on this phone for every sale,
- * even when the app is closed. `compact` = the dismissable dashboard card.
+ * Owner / developers / supervisors: a notification on this phone for everything that happens
+ * in the shop, even when the app is closed. `compact` = the dismissable dashboard card.
  */
 export function SaleAlerts({ compact = false }: { compact?: boolean }) {
   const { state, busy, error, includeOwn, enable, disable, test, setOwn } = usePushAlerts();
@@ -80,11 +176,11 @@ export function SaleAlerts({ compact = false }: { compact?: boolean }) {
   const body = (() => {
     switch (state) {
       case 'unsupported':
-        return <p className="text-sm text-muted-foreground">This browser can't show alerts. Open Cunga Stock in <b>Chrome</b> or <b>Samsung Internet</b> on the live website (or the installed app).</p>;
+        return <p className="text-sm text-muted-foreground">This browser can't show alerts. Open Cunga Stock Clothing in <b>Chrome</b> or <b>Samsung Internet</b> on the live website (or the installed app).</p>;
       case 'ios-install':
         return (
           <p className="text-sm text-muted-foreground">
-            On iPhone, alerts work in the installed app: tap <Share className="w-3.5 h-3.5 inline" /> <b>Share → Add to Home Screen</b>, open Cunga Stock from the home screen, then turn alerts on here.
+            On iPhone, alerts work in the installed app: tap <Share className="w-3.5 h-3.5 inline" /> <b>Share → Add to Home Screen</b>, open the app from the home screen, then turn alerts on here.
           </p>
         );
       case 'blocked':
@@ -92,22 +188,25 @@ export function SaleAlerts({ compact = false }: { compact?: boolean }) {
       case 'on':
         return (
           <div className="space-y-3">
-            <p className="text-sm text-green-700 dark:text-green-400 font-medium">On for this device. Choose below what you want to hear about.</p>
-            <label className="flex items-center justify-between gap-3 text-sm">
-              <span>Also notify me about things <b>I</b> do</span>
+            <p className="text-sm text-green-700 dark:text-green-400 font-medium">✓ On for this device. Choose below what you want to hear about.</p>
+            <label className="flex items-center justify-between gap-3 text-sm cursor-pointer">
+              <span>Also notify me about things <b>I</b> do myself</span>
               <Switch checked={includeOwn} onCheckedChange={setOwn} />
             </label>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" className="gap-1.5" onClick={sendTest}><Send className="w-4 h-4" /> Send a test</Button>
-              <Button size="sm" variant="ghost" className="gap-1.5 text-destructive" onClick={disable} disabled={busy}><BellOff className="w-4 h-4" /> Turn off</Button>
+              <Button size="sm" variant="ghost" className="gap-1.5 text-destructive" onClick={disable} disabled={busy}><BellOff className="w-4 h-4" /> Turn off on this device</Button>
             </div>
           </div>
         );
       default:
         return (
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Get a notification on this phone whenever staff make a sale — who bought what, for how much, and who sold it. Tap it to open the receipt.</p>
-            <Button className="gap-2" onClick={enable} disabled={busy}><BellRing className="w-4 h-4" /> {busy ? 'Turning on…' : 'Turn on sale alerts'}</Button>
+            <p className="text-sm text-muted-foreground">
+              Get a notification on this phone for everything that happens in the shop: sales, payments, stock added or changed,
+              temporary stock, orders and more. It works even when the app is closed. Tap a notification to open the right page.
+            </p>
+            <Button className="gap-2" onClick={enable} disabled={busy}><BellRing className="w-4 h-4" /> {busy ? 'Turning on…' : 'Turn on phone alerts'}</Button>
           </div>
         );
     }
@@ -118,7 +217,7 @@ export function SaleAlerts({ compact = false }: { compact?: boolean }) {
       <CardContent className="p-4 flex gap-3">
         <span className="rounded-full bg-primary/10 p-2 h-fit"><BellRing className="w-5 h-5 text-primary" /></span>
         <div className="flex-1 min-w-0 space-y-1">
-          <p className="font-semibold">{compact ? 'Sale alerts on this phone' : 'Phone notifications'}</p>
+          <p className="font-semibold">{compact ? 'Know everything that happens in your shop' : 'Phone notifications'}</p>
           {body}
           {error && <p className="text-sm text-destructive">{error}</p>}
           {!compact && <AlertChoices />}

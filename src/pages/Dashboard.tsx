@@ -51,7 +51,7 @@ export default function Dashboard() {
       </div>
 
       <InstallCard />
-      {(role === 'owner' || role === 'admin') && <SaleAlerts compact />}
+      {(role === 'owner' || role === 'admin' || role === 'supervisor') && <SaleAlerts compact />}
 
       {/* Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

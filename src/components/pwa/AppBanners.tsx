@@ -17,7 +17,7 @@ export function AppBanners() {
       {update.ready && (
         <div className="mb-4 flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm">
           <Sparkles className="w-4 h-4 text-primary shrink-0" />
-          <span className="flex-1">A new version of Cunga Stock is ready.</span>
+          <span className="flex-1">A new version of the app is ready. It installs by itself when you leave the app, or tap to update now.</span>
           <Button size="sm" onClick={update.apply}>Update now</Button>
         </div>
       )}

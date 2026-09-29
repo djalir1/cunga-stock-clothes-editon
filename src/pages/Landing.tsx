@@ -74,7 +74,7 @@ const INDUSTRIES: Industry[] = [
     features: [
       'Track stock by category, size & colour',
       'Items out on approval or reserved for customers',
-      'Storekeeper & supervisor roles',
+      'Owner, storekeeper & supervisor roles',
       'Daily, weekly & monthly sales reports',
     ],
   },
@@ -188,7 +188,7 @@ const FEATURES = [
   {
     icon: Users,
     title: 'Role-based Access',
-    body: 'Storekeeper, supervisor, manager — each sees exactly what they should.',
+    body: 'Owner, storekeepers and supervisors — each sees exactly what they should.',
   },
   {
     icon: Layers,

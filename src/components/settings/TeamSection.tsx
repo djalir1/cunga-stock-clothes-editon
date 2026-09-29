@@ -63,7 +63,7 @@ export function TeamSection() {
           )}
         </CardTitle>
         <CardDescription>
-          New accounts have no access until you choose a role. Storekeepers can edit; supervisors can only view.
+          New accounts can't use the app until you choose a role for them. Storekeepers can sell and manage stock. Supervisors can see everything and make reports, but can't change anything. Developers are the people who build the app; their accounts can't be changed here.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -85,7 +85,7 @@ export function TeamSection() {
                     {m.user_id === user?.id && <span className="text-muted-foreground font-normal"> (you)</span>}
                   </TableCell>
                   <TableCell>
-                    {m.user_id === user?.id ? (
+                    {m.user_id === user?.id || m.role === 'admin' ? (
                       <Badge variant="outline">{m.role ? ROLE_LABELS[m.role] : 'No access'}</Badge>
                     ) : (
                       <Select
@@ -97,7 +97,7 @@ export function TeamSection() {
                         <SelectContent>
                           <SelectItem value={NO_ACCESS}>No access (waiting)</SelectItem>
                           <SelectItem value="storekeeper">{ROLE_LABELS.storekeeper}</SelectItem>
-                          <SelectItem value="admin">{ROLE_LABELS.admin}</SelectItem>
+                          <SelectItem value="supervisor">{ROLE_LABELS.supervisor}</SelectItem>
                           <SelectItem value="owner">{ROLE_LABELS.owner}</SelectItem>
                         </SelectContent>
                       </Select>

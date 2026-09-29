@@ -22,7 +22,7 @@ export function PendingApproval() {
             <h1 className="text-xl font-bold">Waiting for approval</h1>
             <p className="text-sm text-muted-foreground mt-2">
               Your account <span className="font-medium text-foreground">{user?.email}</span> has been created.
-              The shop owner needs to give you access before you can use Cunga Stock.
+              The shop owner needs to give you access before you can use Cunga Stock Clothing.
             </p>
           </div>
           <Button variant="outline" className="gap-2" onClick={signOut}>

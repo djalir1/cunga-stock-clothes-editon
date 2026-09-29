@@ -26,25 +26,29 @@ export function setupPwa() {
   if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
   window.addEventListener('load', async () => {
     try {
-      const reg = await navigator.serviceWorker.register('/sw.js');
+      const reg = await navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' });
       const track = (worker: ServiceWorker | null) => {
         worker?.addEventListener('statechange', () => {
           // A new version finished installing while an old one is running
-          if (worker.state === 'installed' && navigator.serviceWorker.controller) { waitingWorker = worker; emit(); }
+          if (worker.state === 'installed' && navigator.serviceWorker.controller) { waitingWorker = worker; emit(); applyWhenSafe(); }
         });
       };
-      if (reg.waiting && navigator.serviceWorker.controller) { waitingWorker = reg.waiting; emit(); }
+      if (reg.waiting && navigator.serviceWorker.controller) { waitingWorker = reg.waiting; emit(); applyWhenSafe(); }
       reg.addEventListener('updatefound', () => track(reg.installing));
-      // Check for a new version every 30 minutes while the app is open
-      setInterval(() => reg.update().catch(() => {}), 30 * 60 * 1000);
+      // Look for a new version every 5 minutes while the app is open
+      setInterval(() => { reg.update().catch(() => {}); checkForNewBuild(); }, 5 * 60 * 1000);
     } catch (e) {
       console.warn('Service worker not registered', e);
     }
   });
-  // Coming back to the app (e.g. phone unlocked): look for a newer version, at most every 10 minutes
-  let lastCheck = Date.now();
+
+  // Coming back to the app (e.g. phone unlocked, app reopened from the home screen):
+  // look for a newer version straight away. Going to the background: install a waiting update.
+  let lastCheck = 0;
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible' || Date.now() - lastCheck < 10 * 60 * 1000) return;
+    if (document.visibilityState === 'hidden') { if (updatePending()) applyUpdate(); return; }
+    resumedAt = Date.now();
+    if (Date.now() - lastCheck < 60 * 1000) return;
     lastCheck = Date.now();
     navigator.serviceWorker.getRegistration().then(r => r?.update()).catch(() => {});
     checkForNewBuild();
@@ -58,6 +62,27 @@ export function setupPwa() {
   });
 }
 
+/** When the app was opened or brought back to the screen */
+let resumedAt = Date.now();
+const updatePending = () => !!waitingWorker || newBuild;
+
+function applyUpdate() {
+  if (waitingWorker) waitingWorker.postMessage('SKIP_WAITING'); // → controllerchange → reload
+  else window.location.reload();
+}
+
+/**
+ * Install an update without asking, but never in the middle of someone's work:
+ * right away if the app was just opened (and no sale or form is open),
+ * otherwise the next time the app goes to the background.
+ */
+function applyWhenSafe() {
+  if (!updatePending()) return;
+  const justOpened = Date.now() - resumedAt < 15 * 1000;
+  const busy = location.pathname.startsWith('/sales') || !!document.querySelector('[role="dialog"], [role="alertdialog"]');
+  if (document.visibilityState === 'hidden' || (justOpened && !busy)) applyUpdate();
+}
+
 /** Compares the app files this page runs with the ones on the server. */
 async function checkForNewBuild() {
   try {
@@ -65,7 +90,7 @@ async function checkForNewBuild() {
     if (!current) return;
     const html = await (await fetch('/index.html', { cache: 'no-store' })).text();
     const latest = html.match(/src="([^"]*\/assets\/[^"]+\.js)"/)?.[1];
-    if (latest && !current.endsWith(latest)) { newBuild = true; emit(); }
+    if (latest && !current.endsWith(latest)) { newBuild = true; emit(); applyWhenSafe(); }
   } catch { /* offline */ }
 }
 
@@ -95,7 +120,7 @@ export function useUpdateReady() {
   const fresh = useSyncExternalStore(subscribe, () => newBuild);
   return {
     ready: !!worker || fresh,
-    apply: () => (worker ? worker.postMessage('SKIP_WAITING') : window.location.reload()),
+    apply: applyUpdate,
   };
 }
 

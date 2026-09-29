@@ -8,6 +8,9 @@
 -- ============================================================
 BEGIN;
 
+-- No phone alerts while loading sample data
+SET LOCAL cunga.silent = '1';
+
 ALTER TABLE public.sales DISABLE TRIGGER sales_push_notify;
 ALTER TABLE public.stock_items DISABLE TRIGGER stock_items_push_notify;
 ALTER TABLE public.purchase_orders DISABLE TRIGGER purchase_orders_push_notify;
