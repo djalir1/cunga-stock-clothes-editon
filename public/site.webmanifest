@@ -1,6 +1,6 @@
 {
-  "name": "Cunga Stock Clothing",
-  "short_name": "Cunga Stock Clothing",
+  "name": "Cunga Stock",
+  "short_name": "Cunga Stock",
   "description": "Sales, stock, customers and debts for your clothing shop",
   "id": "/dashboard",
   "start_url": "/dashboard?source=app",
