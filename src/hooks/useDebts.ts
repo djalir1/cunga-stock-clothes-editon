@@ -3,7 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { formatRWF, friendlyError } from '@/lib/format';
-import type { PaymentMethod } from '@/hooks/useSales';
+import type { partsPayload } from '@/lib/money';
+
+type PaymentPayload = ReturnType<typeof partsPayload>;
 import { channelName } from '@/lib/realtime';
 
 export interface DebtPayment {
@@ -13,6 +15,10 @@ export interface DebtPayment {
   paid_at: string;
   note: string | null;
   is_initial: boolean;
+  /** RWF, or the foreign money the customer handed over (amount stays in FRW) */
+  currency: string;
+  amount_foreign: number | null;
+  rate: number | null;
 }
 
 export interface Debt {
@@ -52,7 +58,7 @@ export function useDebts() {
     queryFn: async () => {
       const [{ data: balances, error }, { data: payments, error: payError }, { data: sales, error: salesError }] = await Promise.all([
         supabase.from('debt_balances').select('*'),
-        supabase.from('debt_payments').select('id, debt_id, amount, method, paid_at, note, is_initial').order('paid_at', { ascending: false }),
+        supabase.from('debt_payments').select('id, debt_id, amount, method, paid_at, note, is_initial, currency, amount_foreign, rate').order('paid_at', { ascending: false }),
         supabase.from('sales').select('id, receipt_no').neq('payment_status', 'paid'),
       ]);
       if (error) throw error;
@@ -92,9 +98,9 @@ export function useDebts() {
 
   /** Customer pays an amount; it clears their oldest debts first */
   const payCustomer = useMutation({
-    mutationFn: async (p: { customerId: string; amount: number; method: PaymentMethod; note?: string }) => {
+    mutationFn: async (p: { customerId: string; payments: PaymentPayload; note?: string }) => {
       const { data, error } = await supabase.rpc('pay_customer_debts', {
-        p_customer_id: p.customerId, p_amount: p.amount, p_method: p.method, p_note: p.note || undefined,
+        p_customer_id: p.customerId, p_payments: p.payments, p_note: p.note || undefined,
       });
       if (error) throw error;
       return Number(data);
@@ -108,9 +114,9 @@ export function useDebts() {
 
   /** Payment towards one specific debt */
   const payDebt = useMutation({
-    mutationFn: async (p: { debtId: string; amount: number; method: PaymentMethod; note?: string }) => {
+    mutationFn: async (p: { debtId: string; payments: PaymentPayload; note?: string }) => {
       const { data, error } = await supabase.rpc('record_debt_payment', {
-        p_debt_id: p.debtId, p_amount: p.amount, p_method: p.method, p_note: p.note || undefined,
+        p_debt_id: p.debtId, p_payments: p.payments, p_note: p.note || undefined,
       });
       if (error) throw error;
       return Number(data);

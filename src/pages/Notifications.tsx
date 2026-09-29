@@ -4,6 +4,7 @@ import { useAlerts, type Alert } from '@/hooks/useAlerts';
 import { useActivityLogs } from '@/hooks/useActivityLogs';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatRWF } from '@/lib/format';
+import { describeParts, type SavedPart } from '@/lib/money';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -46,7 +47,9 @@ function describe(log: Log): Omit<Entry, 'id' | 'who' | 'at'> {
     case 'sale:sold':
       return {
         icon: ShoppingCart, tone: 'good', title: `Sale · ${formatRWF(num(d.total))}`,
-        message: `${text(d.customer, 'Walk-in customer')} · ${d.status === 'paid' ? 'paid in full' : d.status === 'partial' ? `paid ${formatRWF(num(d.paid))}, owes the rest` : 'on credit'}`,
+        message: `${text(d.customer, 'Walk-in customer')} · ${d.status === 'paid' ? 'paid in full' : d.status === 'partial' ? `paid ${formatRWF(num(d.paid))}, owes the rest` : 'on credit'}`
+          + (Array.isArray(d.payments) && d.payments.length ? ` · ${describeParts(d.payments as SavedPart[])}` : '')
+          + (num(d.change) > 0 ? ` · change ${formatRWF(num(d.change))}` : ''),
         href: `/sales?receipt=${log.entity_id}`,
       };
     case 'sale:sale_cancelled':
@@ -58,7 +61,9 @@ function describe(log: Log): Omit<Entry, 'id' | 'who' | 'at'> {
     case 'customer:debt_payment':
       return {
         icon: HandCoins, tone: 'good', title: `Payment · ${formatRWF(num(d.amount))}`,
-        message: `${text(d.customer, 'A customer')} paid back money they owed`, href: '/debts',
+        message: `${text(d.customer, 'A customer')} paid back money they owed`
+          + (Array.isArray(d.payments) && d.payments.length ? ` · ${describeParts(d.payments as SavedPart[])}` : ''),
+        href: '/debts',
       };
     case 'customer:created':
       return { icon: UserPlus, tone: 'info', title: 'New customer', message: `${text(d.name)}${d.phone ? ` · ${d.phone}` : ''}`, href: '/customers' };

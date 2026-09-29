@@ -1,9 +1,9 @@
 const rwf = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 
-/** 250000 → "RWF 250,000". Every money value in the app goes through this. */
+/** 250000 → "FRW 250,000" (Rwandan francs). Every FRW amount in the app goes through this. */
 export function formatRWF(amount: number | null | undefined): string {
   if (amount === null || amount === undefined || Number.isNaN(amount)) return '—';
-  return `RWF ${rwf.format(amount)}`;
+  return `FRW ${rwf.format(amount)}`;
 }
 
 /** "Cotton Shirt" + M + White → "Cotton Shirt (M · White)" */

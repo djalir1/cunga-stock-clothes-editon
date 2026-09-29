@@ -23,6 +23,10 @@ export interface ShopSettingsRow {
   tin: string | null;
   logo_url: string | null;
   receipt_footer: string | null;
+  /** FRW for 1 USD / 1 EUR, used when a customer pays in those currencies */
+  usd_rate: number;
+  eur_rate: number;
+  rates_updated_at: string;
 }
 
 async function toDataUrl(url: string): Promise<string | null> {

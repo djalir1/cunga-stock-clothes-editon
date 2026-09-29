@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { moneyInByMethod } from '@/lib/money';
 import { supabase } from '@/integrations/supabase/client';
 import { eachDayOfInterval, format } from 'date-fns';
 
@@ -65,7 +66,7 @@ export function useSalesReport(from: string, to: string) {
 
       const [{ data: sales, error }, { data: repayments, error: payError }, { count: cancelled, error: voidError }] = await Promise.all([
         supabase.from('sales')
-          .select('id, sold_at, total, amount_paid, payment_method, sale_items(item_name, size, color, category_name, set_name, quantity, unit_price, unit_cost)')
+          .select('id, sold_at, total, amount_paid, payment_method, payments, change_given, sale_items(item_name, size, color, category_name, set_name, quantity, unit_price, unit_cost)')
           .gte('sold_at', start).lte('sold_at', end).is('voided_at', null),
         supabase.from('debt_payments').select('amount, method').eq('is_initial', false).gte('paid_at', start).lte('paid_at', end),
         supabase.from('sales').select('id', { count: 'exact', head: true }).gte('sold_at', start).lte('sold_at', end).not('voided_at', 'is', null),
@@ -83,7 +84,7 @@ export function useSalesReport(from: string, to: string) {
 
       const withCost = lines.filter(l => l.unit_cost !== null);
       const methods = new Map<string, number>();
-      sales.forEach(s => methods.set(s.payment_method, (methods.get(s.payment_method) ?? 0) + Number(s.amount_paid)));
+      sales.forEach(s => Object.entries(moneyInByMethod(s)).forEach(([m, v]) => methods.set(m, (methods.get(m) ?? 0) + v)));
       repayments.forEach(p => methods.set(p.method, (methods.get(p.method) ?? 0) + Number(p.amount)));
 
       const days = eachDayOfInterval({ start: new Date(`${from}T00:00:00`), end: new Date(`${to}T00:00:00`) });

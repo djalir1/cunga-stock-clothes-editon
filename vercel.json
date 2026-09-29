@@ -1,7 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/((?!assets/|sw.js|site.webmanifest|robots.txt|favicon|icon-|android-chrome|apple-touch-icon|cunga-logo|placeholder).*)",
+      "source": "/((?!assets/|sw.js|site.webmanifest|robots.txt|favicon|icon-|android-chrome|apple-touch-icon|cunga-logo|cunga-stock-logo|notification-badge|placeholder).*)",
       "destination": "/index.html"
     }
   ],

@@ -3,7 +3,7 @@
  * and still shows the app shell on a bad connection. Shop data (Supabase API)
  * is never cached: stock, sales and debts are always live.
  */
-const VERSION = 'v4';
+const VERSION = 'v5';
 const SHELL = `shell-${VERSION}`;
 const ASSETS = `assets-${VERSION}`;
 const PHOTOS = 'item-photos';
@@ -96,7 +96,7 @@ self.addEventListener('push', event => {
   event.waitUntil(self.registration.showNotification(data.title || 'Cunga Stock', {
     body: data.body || '',
     icon: '/icon-192.png',
-    badge: '/icon-maskable-192.png',
+    badge: '/notification-badge.png',
     tag: data.tag,
     renotify: !!data.tag,
     data: { url: data.url || '/dashboard' },

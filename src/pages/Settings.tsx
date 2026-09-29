@@ -27,6 +27,7 @@ import { ROLE_LABELS } from '@/lib/types';
 import { TeamSection } from '@/components/settings/TeamSection';
 import { SaleAlerts, SupervisorAlertsSection } from '@/components/pwa/SaleAlerts';
 import { ShopProfile } from '@/components/settings/ShopProfile';
+import { ExchangeRates } from '@/components/settings/ExchangeRates';
 import { DeveloperAlertsOverview } from '@/components/settings/DeveloperAlertsOverview';
 
 export default function Settings() {
@@ -149,6 +150,8 @@ export default function Settings() {
       </Card>
 
       <ShopProfile />
+
+      <ExchangeRates />
 
       {(role === 'owner' || role === 'admin' || role === 'supervisor') && <SaleAlerts />}
 

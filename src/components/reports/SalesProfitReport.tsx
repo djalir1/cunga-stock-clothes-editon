@@ -81,7 +81,7 @@ export function SalesProfitReport({ from, to }: { from: string; to: string }) {
   const exportCSV = () => {
     if (!r) return;
     const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    let csv = 'Date,Item,Size,Colour,Category,Set,Pieces,Price each (RWF),Cost each (RWF),Sales (RWF),Profit (RWF)\n';
+    let csv = 'Date,Item,Size,Colour,Category,Set,Pieces,Price each (FRW),Cost each (FRW),Sales (FRW),Profit (FRW)\n';
     r.lines.forEach(l => {
       csv += [format(new Date(l.sold_at), 'yyyy-MM-dd HH:mm'), l.item_name, l.size, l.color, l.category_name, l.set_name, l.quantity,
         l.unit_price, l.unit_cost ?? '', l.quantity * l.unit_price, l.unit_cost === null ? '' : l.quantity * (l.unit_price - l.unit_cost)].map(esc).join(',') + '\n';
@@ -146,7 +146,7 @@ export function SalesProfitReport({ from, to }: { from: string; to: string }) {
             <Card className="lg:col-span-2">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">Sales per day</CardTitle>
-                <CardDescription>{period} · amounts in RWF · hover a bar for profit</CardDescription>
+                <CardDescription>{period} · amounts in FRW · hover a bar for profit</CardDescription>
               </CardHeader>
               <CardContent className="h-64">
                 <ResponsiveContainer width="100%" height="100%">

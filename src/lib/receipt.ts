@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import { METHOD_LABEL, formatMoney, type SavedPart } from '@/lib/money';
 import { format } from 'date-fns';
 import { SHOP } from '@/config/shop';
 import { formatRWF } from '@/lib/format';
@@ -49,11 +50,11 @@ export interface ReceiptSale {
   due_date?: string | null;
   /** Set when the owner cancelled the sale */
   voided_at?: string | null;
+  /** How it was paid, part by part (FRW / USD / EUR) */
+  payments?: unknown;
+  change_given?: number | null;
 }
 
-const METHOD_LABELS: Record<string, string> = {
-  cash: 'Cash', mobile_money: 'Mobile Money', bank: 'Bank', other: 'Other',
-};
 
 export const receiptNumber = (n: number) => `#${String(n).padStart(5, '0')}`;
 
@@ -63,7 +64,8 @@ function buildReceipt(sale: ReceiptSale): jsPDF {
   const margin = 5;
   const lineGap = 4.2;
   const groups = groupReceiptLines(sale.lines);
-  const height = 78 + sale.lines.length * 9 + groups.filter(g => g.set_name).length * 5 + (sale.payment_status !== 'paid' ? 14 : 0) + (sale.voided_at ? 6 : 0)
+  const parts = (Array.isArray(sale.payments) ? sale.payments : []) as SavedPart[];
+  const height = 78 + Math.max(parts.length - 1, 0) * 4.2 + (Number(sale.change_given) > 0 ? 4.2 : 0) + sale.lines.length * 9 + groups.filter(g => g.set_name).length * 5 + (sale.payment_status !== 'paid' ? 14 : 0) + (sale.voided_at ? 6 : 0)
     + (SHOP.logoData ? 22 : 0) + (SHOP.email ? 4 : 0) + (SHOP.tin ? 4 : 0) + 12;
   const doc = new jsPDF({ unit: 'mm', format: [width, height] });
   const right = width - margin;
@@ -140,7 +142,17 @@ function buildReceipt(sale: ReceiptSale): jsPDF {
   doc.setFontSize(10);
   row('TOTAL', formatRWF(sale.total), true);
   doc.setFontSize(8);
-  row(`Paid (${METHOD_LABELS[sale.payment_method] ?? sale.payment_method})`, formatRWF(sale.amount_paid));
+  if (parts.length) {
+    // One line per part; foreign money shows the amount handed over and the rate
+    parts.forEach(p => row(
+      p.currency === 'RWF'
+        ? `Paid (${METHOD_LABEL[p.method] ?? p.method})`
+        : `Paid ${METHOD_LABEL[p.method] ?? p.method} ${formatMoney(Number(p.amount), p.currency)} @ ${Number(p.rate).toLocaleString('en-US')}`,
+      formatRWF(Number(p.frw))));
+    if (Number(sale.change_given) > 0) row('Change given', formatRWF(Number(sale.change_given)));
+  } else {
+    row(`Paid (${METHOD_LABEL[sale.payment_method] ?? sale.payment_method})`, formatRWF(sale.amount_paid));
+  }
   if (sale.payment_status !== 'paid') {
     const owed = sale.balance ?? sale.total - sale.amount_paid;
     row('Balance owed', formatRWF(owed), true);

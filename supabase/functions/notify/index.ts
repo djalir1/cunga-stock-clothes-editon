@@ -30,8 +30,20 @@ const cors = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
-const rwf = (n: number) => `RWF ${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
-const METHOD: Record<string, string> = { cash: "Cash", mobile_money: "Mobile Money", bank: "Bank", other: "Other" };
+const rwf = (n: number) => `FRW ${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n)}`;
+const METHOD: Record<string, string> = { cash: "Cash", mobile_money: "Mobile Money", bank: "Bank", other: "Other", split: "Split" };
+const foreignMoney = (n: number, cur: string) => `${cur} ${new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(n)}`;
+
+interface Part { method: string; currency: string; amount: number; rate: number; frw: number }
+/** " · paid in USD" when foreign money was used, so it stands out in the title */
+const currencies = (parts: Part[]) => {
+  const foreign = [...new Set(parts.map(p => p.currency).filter(c => c !== "RWF"))];
+  return foreign.length ? ` · paid in ${foreign.join(" + ")}` : "";
+};
+/** "Cash USD 20 (= FRW 29,000) + Mobile Money FRW 15,000" */
+const describeParts = (parts: Part[]) => parts.map(p => p.currency === "RWF"
+  ? `${METHOD[p.method] ?? p.method} ${rwf(Number(p.frw))}`
+  : `${METHOD[p.method] ?? p.method} ${foreignMoney(Number(p.amount), p.currency)} (= ${rwf(Number(p.frw))})`).join(" + ");
 // Rwanda time (UTC+2) for "today" in reminders
 const kigaliDate = (offsetDays = 0) => new Date(Date.now() + 2 * 3600e3 + offsetDays * 86400e3).toISOString().slice(0, 10);
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -138,21 +150,25 @@ function describeLines(lines: { item_name: string; size: string | null; color: s
 async function saleAlert(saleId: string, action: "sale" | "sale_cancelled", actor: string | null) {
   const { data: sale } = await db
     .from("sales")
-    .select("id, receipt_no, total, amount_paid, payment_status, payment_method, source, customer_name, created_by, void_reason, sale_items(item_name, size, color, quantity, set_name)")
+    .select("id, receipt_no, total, amount_paid, payment_status, payment_method, payments, change_given, source, customer_name, created_by, void_reason, sale_items(item_name, size, color, quantity, set_name)")
     .eq("id", saleId).maybeSingle();
   if (!sale) return { sent: 0, reason: "sale not found" };
   const by = actor ?? sale.created_by;
   const who = sale.customer_name ?? "A walk-in customer";
   const items = describeLines(sale.sale_items ?? []);
   const total = Number(sale.total), paid = Number(sale.amount_paid);
+  // Which method and currency the customer paid with, e.g. "Cash USD 20 (= FRW 29,000) + Mobile Money FRW 15,000"
+  const parts = (Array.isArray(sale.payments) ? sale.payments : []) as Part[];
+  const how = parts.length ? describeParts(parts) : METHOD[sale.payment_method] ?? sale.payment_method;
+  const change = Number(sale.change_given ?? 0);
   const payment = sale.payment_status === "paid"
-    ? `Paid · ${METHOD[sale.payment_method] ?? sale.payment_method}`
-    : sale.payment_status === "partial" ? `Paid ${rwf(paid)} · owes ${rwf(total - paid)}` : `On credit · owes ${rwf(total)}`;
+    ? `Paid: ${how}${change > 0 ? ` · change ${rwf(change)}` : ""}`
+    : sale.payment_status === "partial" ? `Paid: ${how} · owes ${rwf(total - paid)}` : `On credit · owes ${rwf(total)}`;
   const seller = await firstName(by);
   const url = `/sales?receipt=${sale.id}`;
   return action === "sale"
     ? broadcast("sales", {
-        title: `New sale · ${rwf(total)}`,
+        title: `New sale · ${rwf(total)}${currencies(parts)}`,
         body: `${who} bought ${items}. Sold by ${seller}. ${payment}${sale.source === "temp_stock" ? " (from temporary stock)" : ""}`,
         url, tag: `sale-${sale.id}`,
       }, by)
@@ -288,6 +304,14 @@ async function activityAlert(b: ActivityBody, actor: string | null) {
       const rows = (pays ?? []) as unknown as { amount: number; method: string; debts: { customer_id: string | null; customers: { name: string } | null } | null }[];
       if (!rows.length) return { sent: 0 };
       const total = rows.reduce((s, r) => s + Number(r.amount), 0);
+      // The parts as handed over (currency, amount) are in the activity log of this payment
+      const { data: logRow } = await db.from("activity_logs").select("details")
+        .eq("action", "debt_payment").eq("created_at", b.at!).limit(1).maybeSingle();
+      const parts = ((logRow?.details as { payments?: Part[] } | null)?.payments ?? []) as Part[];
+      const handed = parts.reduce((s, p) => s + Number(p.frw), 0);
+      const how = parts.length
+        ? `${describeParts(parts)}${handed > total ? ` · change ${rwf(handed - total)}` : ""}`
+        : METHOD[rows[0].method] ?? rows[0].method;
       const name = rows[0].debts?.customers?.name ?? "A customer";
       const customerId = rows[0].debts?.customer_id;
       let still = "";
@@ -297,8 +321,8 @@ async function activityAlert(b: ActivityBody, actor: string | null) {
         still = left > 0 ? ` Still owes ${rwf(left)}.` : " All paid up now.";
       }
       return broadcast("payments", {
-        title: `Payment received · ${rwf(total)}`,
-        body: `${name} paid ${rwf(total)} (${METHOD[rows[0].method] ?? rows[0].method}). Recorded by ${who}.${still}`,
+        title: `Payment received · ${rwf(total)}${currencies(parts)}`,
+        body: `${name} paid ${rwf(total)}. Paid: ${how}. Recorded by ${who}.${still}`,
         url: "/debts", tag: `pay-${b.at}`,
       }, actor);
     }

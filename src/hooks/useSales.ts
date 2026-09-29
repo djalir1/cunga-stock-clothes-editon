@@ -6,7 +6,8 @@ import type { ReceiptSale } from '@/lib/receipt';
 import { formatRWF, friendlyError } from '@/lib/format';
 import { channelName } from '@/lib/realtime';
 
-export type PaymentMethod = 'cash' | 'mobile_money' | 'bank' | 'other';
+export type { PaymentMethod } from '@/lib/money';
+import type { PaymentMethod } from '@/lib/money';
 
 export const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
   { value: 'cash', label: 'Cash' },
@@ -30,11 +31,12 @@ export interface NewSale {
   /** undefined = paid in full */
   amountPaid?: number;
   dueDate?: string;
-  method: PaymentMethod;
+  /** How it was paid: parts in FRW / USD / EUR (see lib/money partsPayload) */
+  payments: { method: PaymentMethod; currency: string; amount: number; rate: number }[];
 }
 
 const SALE_SELECT = `
-  id, receipt_no, sold_at, customer_id, customer_name, total, amount_paid, payment_status, payment_method, source, voided_at, void_reason, created_by,
+  id, receipt_no, sold_at, customer_id, customer_name, total, amount_paid, payment_status, payment_method, payments, change_given, source, voided_at, void_reason, created_by,
   sale_items(item_name, size, color, quantity, unit_price, set_name),
   debts(id, due_date)
 `;
@@ -82,9 +84,8 @@ export function useSales(limit = 30) {
         p_customer_id: sale.customer?.id || null,
         p_customer_name: sale.customer?.name || null,
         p_customer_phone: sale.customer?.phone || null,
-        p_amount_paid: sale.amountPaid ?? null,
         p_due_date: sale.dueDate || null,
-        p_payment_method: sale.method,
+        p_payments: sale.payments,
         p_source: 'pos',
       });
       if (error) throw error;

@@ -6,6 +6,8 @@ import { useTemporaryStock, TempStockCheckout, CheckoutStatus } from '@/hooks/us
 import { useStockItems } from '@/hooks/useStockItems';
 import { formatRWF } from '@/lib/format';
 import { MoneyInput } from '@/components/shop/MoneyInput';
+import { PaymentParts } from '@/components/shop/PaymentParts';
+import { newPart, partsPayload, summarizeParts, type DraftPart } from '@/lib/money';
 import { FormDialog } from '@/components/shop/FormDialog';
 import { CustomerPicker, type CustomerChoice } from '@/components/shop/CustomerPicker';
 import { VariantPicker, type PickedVariant } from '@/components/shop/VariantPicker';
@@ -93,10 +95,12 @@ function TemporaryStockContent() {
   // --- Returned / Sold ---
   const [returnConfirmId, setReturnConfirmId] = useState<string | null>(null);
   const [selling, setSelling] = useState<TempStockCheckout | null>(null);
-  const [sellForm, setSellForm] = useState({ unitPrice: '', amountPaid: '', dueDate: '' });
+  const [sellForm, setSellForm] = useState({ unitPrice: '', dueDate: '' });
+  // How they paid: an empty amount = the whole price; less than the price = the rest becomes a debt
+  const [sellParts, setSellParts] = useState<DraftPart[]>(() => [newPart()]);
   const sellTotal = selling && sellForm.unitPrice !== '' ? selling.quantity * Number(sellForm.unitPrice) : null;
-  const sellPaid = sellForm.amountPaid === '' ? sellTotal : Number(sellForm.amountPaid);
-  const sellOwes = sellTotal !== null && sellPaid !== null ? sellTotal - sellPaid : 0;
+  const sellPay = summarizeParts(sellParts, sellTotal ?? 0, true);
+  const sellOwes = sellTotal !== null ? sellPay.owes : 0;
 
   const [deleteCheckoutConfirmId, setDeleteCheckoutConfirmId] = useState<string | null>(null);
 
@@ -154,7 +158,8 @@ function TemporaryStockContent() {
 
   const openSell = (c: TempStockCheckout) => {
     setSelling(c);
-    setSellForm({ unitPrice: '', amountPaid: '', dueDate: '' });
+    setSellForm({ unitPrice: '', dueDate: '' });
+    setSellParts([newPart()]);
   };
 
   const handleSell = async () => {
@@ -163,7 +168,7 @@ function TemporaryStockContent() {
       id: selling.id,
       outcome: 'sold',
       unitPrice: Number(sellForm.unitPrice),
-      amountPaid: sellPaid ?? undefined,
+      payments: partsPayload(sellParts, sellPay),
       dueDate: sellForm.dueDate || undefined,
     });
     setSelling(null);
@@ -171,7 +176,7 @@ function TemporaryStockContent() {
 
   // --- CSV export ---
   const exportCSV = () => {
-    let csv = 'Customer,Phone,Item,Size/Colour,Qty,Deposit (RWF),Taken Date,Expected Return,Closed Date,Status,Notes\n';
+    let csv = 'Customer,Phone,Item,Size/Colour,Qty,Deposit (FRW),Taken Date,Expected Return,Closed Date,Status,Notes\n';
     reportRows.forEach(c => {
       csv += `"${c.customer_name}","${c.customer_phone || ''}","${c.item_name}","${variant(c.size, c.color)}",${c.quantity},${c.deposit ?? ''},${fmtDate(c.taken_date)},${fmtDate(c.expected_return_date)},${fmtDate(c.closed_date)},${statusLabel[c.status]},"${c.notes || ''}"\n`;
     });
@@ -666,24 +671,20 @@ function TemporaryStockContent() {
         footer={
           <>
             <Button variant="outline" onClick={() => setSelling(null)}>Cancel</Button>
-            <Button onClick={handleSell} disabled={sellTotal === null || sellOwes < 0 || closeCheckout.isPending}>
+            <Button onClick={handleSell} disabled={sellTotal === null || sellPay.changeTooBig || sellPay.missingRate || closeCheckout.isPending}>
               Confirm Sale
             </Button>
           </>
         }
       >
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Price per piece</Label>
-            <MoneyInput placeholder="Agreed price" autoFocus value={sellForm.unitPrice}
-              onChange={unitPrice => setSellForm({ ...sellForm, unitPrice })} />
-          </div>
-          <div className="space-y-2">
-            <Label>Amount paid</Label>
-            <MoneyInput placeholder={sellTotal !== null ? `Full: ${sellTotal.toLocaleString('en-US')}` : ''}
-              value={sellForm.amountPaid}
-              onChange={amountPaid => setSellForm({ ...sellForm, amountPaid })} />
-          </div>
+        <div className="space-y-2">
+          <Label>Price per piece</Label>
+          <MoneyInput placeholder="Agreed price" autoFocus value={sellForm.unitPrice}
+            onChange={unitPrice => setSellForm({ ...sellForm, unitPrice })} />
+        </div>
+        <div className="space-y-2">
+          <Label>How they paid <span className="text-muted-foreground font-normal">(leave empty = paid in full)</span></Label>
+          <PaymentParts parts={sellParts} onChange={setSellParts} summary={sellPay} autoRest />
         </div>
         {selling?.deposit ? (
           <p className="text-xs text-muted-foreground">
@@ -699,12 +700,15 @@ function TemporaryStockContent() {
         {sellTotal !== null && (
           <div className="rounded-lg bg-muted/50 px-3 py-2 space-y-1 text-sm">
             <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-semibold">{formatRWF(sellTotal)}</span></div>
+            {sellPay.change > 0 && (
+              <div className="flex justify-between text-green-700 dark:text-green-400"><span>Give back (change, FRW cash)</span><span className="font-semibold">{formatRWF(sellPay.change)}</span></div>
+            )}
             {sellOwes > 0 && (
               <div className="flex justify-between text-amber-600"><span>Still owes (added to debts)</span><span className="font-semibold">{formatRWF(sellOwes)}</span></div>
             )}
           </div>
         )}
-        {sellOwes < 0 && <p className="text-sm text-destructive">Amount paid can't be more than the total.</p>}
+        {sellPay.changeTooBig && <p className="text-sm text-destructive">Only cash can be more than the price (the extra is given back as change).</p>}
       </FormDialog>
 
       {/* ── Returned Confirm ── */}

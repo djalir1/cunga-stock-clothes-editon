@@ -119,14 +119,12 @@ export default function Auth() {
               Back to home
             </Link>
           </div>
-          <div className="mx-auto mb-4 mt-2 w-24 h-24 rounded-2xl bg-white flex items-center justify-center shadow-glow overflow-hidden p-1">
-            <img
-              src="/cunga-logo-nobg.png"
-              alt="Cunga Stock"
-              className="w-full h-full object-contain"
-            />
-          </div>
-          <CardTitle className="text-2xl font-bold">Cunga Stock Clothing</CardTitle>
+          <img
+            src="/cunga-logo-full.png"
+            alt="Cunga Stock — stock management system for clothing"
+            className="mx-auto mt-2 mb-2 w-44 h-auto object-contain"
+          />
+          <CardTitle className="sr-only">Cunga Stock Clothing</CardTitle>
           <CardDescription>Inventory management, tailored to your business</CardDescription>
         </CardHeader>
         <CardContent>

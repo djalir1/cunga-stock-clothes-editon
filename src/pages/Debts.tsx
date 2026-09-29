@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { METHOD_LABEL, formatMoney } from '@/lib/money';
 import { format, formatDistanceToNowStrict, startOfMonth } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDebts, isOverdue, type Debt } from '@/hooks/useDebts';
@@ -26,7 +27,6 @@ interface CustomerDebts {
   debts: Debt[];
 }
 
-const METHOD: Record<string, string> = { cash: 'Cash', mobile_money: 'Mobile Money', bank: 'Bank', other: 'Other' };
 const fmt = (d: string) => format(new Date(d), 'dd MMM yyyy');
 
 function reminder(c: CustomerDebts) {
@@ -132,7 +132,7 @@ export default function Debts() {
                     <div className="space-y-1 border-t border-border pt-2">
                       {d.payments.map(p => (
                         <p key={p.id} className="text-xs text-muted-foreground flex justify-between gap-2">
-                          <span>{format(new Date(p.paid_at), 'dd MMM')} · {METHOD[p.method] ?? p.method}{p.is_initial ? ' · at the sale' : ''}{p.note && !p.is_initial ? ` · ${p.note}` : ''}</span>
+                          <span>{format(new Date(p.paid_at), 'dd MMM')} · {METHOD_LABEL[p.method] ?? p.method}{p.currency !== 'RWF' && p.amount_foreign ? ` · ${formatMoney(Number(p.amount_foreign), p.currency)}` : ''}{p.is_initial ? ' · at the sale' : ''}{p.note && !p.is_initial ? ` · ${p.note}` : ''}</span>
                           <span className="text-green-600 font-medium">+{formatRWF(p.amount)}</span>
                         </p>
                       ))}

@@ -100,6 +100,9 @@ export type Database = {
       }
       debt_payments: {
         Row: {
+          currency: string
+          amount_foreign: number | null
+          rate: number | null
           is_initial: boolean
           amount: number
           created_at: string
@@ -111,6 +114,9 @@ export type Database = {
           paid_at: string
         }
         Insert: {
+          currency?: string
+          amount_foreign?: number | null
+          rate?: number | null
           is_initial?: boolean
           amount: number
           created_at?: string
@@ -122,6 +128,9 @@ export type Database = {
           paid_at?: string
         }
         Update: {
+          currency?: string
+          amount_foreign?: number | null
+          rate?: number | null
           is_initial?: boolean
           amount?: number
           created_at?: string
@@ -572,6 +581,8 @@ export type Database = {
       }
       sales: {
         Row: {
+          payments: Json
+          change_given: number
           receipt_no: number
           amount_paid: number
           created_at: string
@@ -590,6 +601,8 @@ export type Database = {
           voided_by: string | null
         }
         Insert: {
+          payments?: Json
+          change_given?: number
           receipt_no?: never
           amount_paid: number
           created_at?: string
@@ -608,6 +621,8 @@ export type Database = {
           voided_by?: string | null
         }
         Update: {
+          payments?: Json
+          change_given?: number
           receipt_no?: never
           amount_paid?: number
           created_at?: string
@@ -637,6 +652,9 @@ export type Database = {
       }
       shop_settings: {
         Row: {
+          usd_rate: number
+          eur_rate: number
+          rates_updated_at: string
           supervisor_alerts: string[]
           email: string | null
           id: number
@@ -651,6 +669,9 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          usd_rate?: number
+          eur_rate?: number
+          rates_updated_at?: string
           supervisor_alerts?: string[]
           email?: string | null
           id?: number
@@ -665,6 +686,9 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          usd_rate?: number
+          eur_rate?: number
+          rates_updated_at?: string
           supervisor_alerts?: string[]
           email?: string | null
           id?: number
@@ -1076,6 +1100,7 @@ export type Database = {
       }
       close_temp_checkout: {
         Args: {
+          p_payments?: Json
           p_amount_paid?: number
           p_checkout_id: string
           p_due_date?: string
@@ -1118,7 +1143,8 @@ export type Database = {
       }
       pay_customer_debts: {
         Args: {
-          p_amount: number
+          p_payments?: Json
+          p_amount?: number
           p_customer_id: string
           p_method?: string
           p_note?: string
@@ -1131,7 +1157,8 @@ export type Database = {
       }
       record_debt_payment: {
         Args: {
-          p_amount: number
+          p_payments?: Json
+          p_amount?: number
           p_debt_id: string
           p_method?: string
           p_note?: string
@@ -1140,6 +1167,7 @@ export type Database = {
       }
       record_sale: {
         Args: {
+          p_payments?: Json
           p_amount_paid?: number
           p_customer_id?: string
           p_customer_name?: string

@@ -59,7 +59,7 @@ export function downloadPDF(filename: string, title: string, subtitle: string, s
       alternateRowStyles: { fillColor: [241, 245, 255] },
       didParseCell: data => {
         if (sec.totals && data.section === 'body' && data.row.index === sec.body.length - 1) data.cell.styles.fontStyle = 'bold';
-        if (data.column.index > 0 && /^RWF |^-?\d[\d,]*%?$/.test(String(data.cell.raw ?? ''))) data.cell.styles.halign = 'right';
+        if (data.column.index > 0 && /^(FRW|USD|EUR) |^-?\d[\d,]*%?$/.test(String(data.cell.raw ?? ''))) data.cell.styles.halign = 'right';
       },
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

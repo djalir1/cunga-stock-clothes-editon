@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { moneyInByMethod, type SavedPart } from '@/lib/money';
 import { eachDayOfInterval, format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -27,15 +28,15 @@ export interface CashDay {
 
 /** Cash vs credit per day: what was sold, what was paid, what went on credit, what came back. */
 export function useCashReport(from: string, to: string) {
-  return useQuery<{ days: CashDay[]; total: CashDay }>({
+  return useQuery<{ days: CashDay[]; total: CashDay; foreign: Record<'USD' | 'EUR', number> }>({
     queryKey: ['sales', 'cash-report', from, to],
     enabled: !!from && !!to && from <= to,
     queryFn: async () => {
       const { start, end } = bounds(from, to);
       const [{ data: sales, error }, { data: pays, error: payError }] = await Promise.all([
-        supabase.from('sales').select('sold_at, total, amount_paid, payment_method').gte('sold_at', start).lte('sold_at', end).is('voided_at', null),
+        supabase.from('sales').select('sold_at, total, amount_paid, payment_method, payments, change_given').gte('sold_at', start).lte('sold_at', end).is('voided_at', null),
         // cancelled sales' debts (and their payments) are deleted, so nothing to exclude here
-        supabase.from('debt_payments').select('paid_at, amount, method').eq('is_initial', false).gte('paid_at', start).lte('paid_at', end),
+        supabase.from('debt_payments').select('paid_at, amount, method, currency, amount_foreign').eq('is_initial', false).gte('paid_at', start).lte('paid_at', end),
       ]);
       if (error) throw error;
       if (payError) throw payError;
@@ -48,16 +49,25 @@ export function useCashReport(from: string, to: string) {
         .map(d => [format(d, 'yyyy-MM-dd'), blank(format(d, 'yyyy-MM-dd'))]));
       const dayOf = (iso: string) => days.get(format(new Date(iso), 'yyyy-MM-dd'));
 
+      // Dollars / euros handed over (what should be in the drawer besides francs)
+      const foreign = { USD: 0, EUR: 0 };
+      const addForeign = (currency: string, amount: number) => {
+        if (currency === 'USD' || currency === 'EUR') foreign[currency] += amount;
+      };
+
       sales.forEach(s => {
         const d = dayOf(s.sold_at); if (!d) return;
+        (Array.isArray(s.payments) ? s.payments as unknown as SavedPart[] : []).forEach(p => addForeign(p.currency, Number(p.amount)));
         const total = Number(s.total), paid = Number(s.amount_paid);
         d.sales += total; d.count++; d.paidAtTill += paid; d.onCredit += total - paid;
-        d.moneyIn[s.payment_method] = (d.moneyIn[s.payment_method] ?? 0) + paid;
+        // Split sales count each part under its own method (change comes out of the cash)
+        Object.entries(moneyInByMethod(s)).forEach(([m, v]) => { d.moneyIn[m] = (d.moneyIn[m] ?? 0) + v; });
         d.totalIn += paid;
       });
       pays.forEach(p => {
         const d = dayOf(p.paid_at); if (!d) return;
         const amount = Number(p.amount);
+        if (p.amount_foreign) addForeign(p.currency, Number(p.amount_foreign));
         d.repayments += amount;
         d.moneyIn[p.method] = (d.moneyIn[p.method] ?? 0) + amount;
         d.totalIn += amount;
@@ -70,7 +80,7 @@ export function useCashReport(from: string, to: string) {
         METHODS.forEach(m => { t.moneyIn[m] += d.moneyIn[m] ?? 0; });
         return t;
       }, blank('Total'));
-      return { days: list, total };
+      return { days: list, total, foreign };
     },
   });
 }

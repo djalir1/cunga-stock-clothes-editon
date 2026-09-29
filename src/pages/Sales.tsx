@@ -4,7 +4,9 @@ import { addDays, format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStockItems, type StockItemWithCategory } from '@/hooks/useStockItems';
 import { useItemSets, type ItemSet } from '@/hooks/useItemSets';
-import { useSales, PAYMENT_METHODS, type PaymentMethod, type SaleWithLines } from '@/hooks/useSales';
+import { useSales, type SaleWithLines } from '@/hooks/useSales';
+import { METHOD_LABEL, formatMoney, newPart, partsPayload, summarizeParts, type DraftPart, type SavedPart } from '@/lib/money';
+import { PaymentParts } from '@/components/shop/PaymentParts';
 import { formatRWF } from '@/lib/format';
 import { downloadReceipt, groupReceiptLines, printReceipt, receiptNumber } from '@/lib/receipt';
 import type { StockVariant } from '@/lib/types';
@@ -54,9 +56,9 @@ export default function Sales() {
   const [cart, setCart] = useState<CartEntry[]>([]);
   const [customer, setCustomer] = useState<CustomerChoice | null>(null);
   const [payInFull, setPayInFull] = useState(true);
-  const [amountPaid, setAmountPaid] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const [method, setMethod] = useState<PaymentMethod>('cash');
+  // How the customer pays: one cash FRW part by default (= the whole bill)
+  const [payParts, setPayParts] = useState<DraftPart[]>(() => [newPart()]);
   const [receipt, setReceipt] = useState<SaleWithLines | null>(null);
   const [cancelReason, setCancelReason] = useState<string | null>(null);
   const [justSold, setJustSold] = useState(false);
@@ -155,14 +157,18 @@ export default function Sales() {
   const missingPrice = cart.some(e => e.price === '' || Number(e.price) < 0);
   const total = cart.reduce((s, e) => s + e.quantity * (Number(e.price) || 0), 0);
   const pieces = cart.reduce((s, e) => s + e.quantity * (e.kind === 'set' ? e.parts.length : 1), 0);
-  const paid = payInFull ? total : Number(amountPaid) || 0;
+  // "Paid in full": an empty part takes the rest of the bill. "Part / credit": empty = nothing paid.
+  const pay = summarizeParts(payParts, total, payInFull);
+  const paid = pay.paid;
   const owes = total - paid;
-  const paidTooMuch = !payInFull && paid > total;
+  const shortInFull = payInFull && pay.owes > 0;
+  const paidTooMuch = !payInFull && pay.received > total;
   const needsCustomer = owes > 0 && !customer;
-  const canComplete = canEdit && cart.length > 0 && !missingPrice && !paidTooMuch && !needsCustomer && !recordSale.isPending;
+  const canComplete = canEdit && cart.length > 0 && !missingPrice && !shortInFull && !paidTooMuch && !pay.changeTooBig
+    && !pay.missingRate && !needsCustomer && !recordSale.isPending;
 
   const resetSale = () => {
-    setCart([]); setCustomer(null); setPayInFull(true); setAmountPaid(''); setDueDate(''); setMethod('cash');
+    setCart([]); setCustomer(null); setPayInFull(true); setDueDate(''); setPayParts([newPart()]);
   };
 
   const completeSale = async () => {
@@ -175,9 +181,8 @@ export default function Sales() {
     const sale = await recordSale.mutateAsync({
       lines,
       customer,
-      amountPaid: payInFull ? undefined : paid,
       dueDate: owes > 0 ? dueDate || undefined : undefined,
-      method,
+      payments: partsPayload(payParts, pay),
     });
     resetSale();
     setCancelReason(null);
@@ -187,7 +192,10 @@ export default function Sales() {
 
   const blockReason = cart.length === 0 ? 'Tap an item or set to add it'
     : missingPrice ? 'Enter a price for everything in the cart'
-    : paidTooMuch ? "Amount paid can't be more than the total"
+    : pay.missingRate ? "Enter today's exchange rate for the USD / EUR part"
+    : shortInFull ? `${formatRWF(pay.owes)} is still missing. Add another part, or choose "Part / credit"`
+    : paidTooMuch ? `That's more than the total. Choose "Paid in full" to give change`
+    : pay.changeTooBig ? 'Only cash can be more than the bill (change is given in cash). Lower the Mobile Money / bank part'
     : needsCustomer ? 'Choose the customer who owes the rest'
     : null;
 
@@ -429,21 +437,10 @@ export default function Sales() {
                     <HandCoins className="w-4 h-4" /> Part / credit
                   </button>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {PAYMENT_METHODS.map(m => (
-                    <Button key={m.value} type="button" size="sm" className="h-8"
-                      variant={method === m.value ? 'default' : 'outline'}
-                      onClick={() => setMethod(m.value)}>
-                      {m.label}
-                    </Button>
-                  ))}
-                </div>
+                {!payInFull && <p className="text-xs text-muted-foreground">What they pay now — leave empty if nothing. The rest goes to their debts.</p>}
+                <PaymentParts parts={payParts} onChange={setPayParts} summary={pay} autoRest={payInFull} />
                 {!payInFull && (
                   <div className="space-y-3 rounded-lg bg-amber-500/5 border border-amber-500/20 p-3 animate-fade-in">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Paid now — 0 if nothing</Label>
-                      <MoneyInput placeholder="0" value={amountPaid} onChange={setAmountPaid} />
-                    </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs">Pay the rest by</Label>
                       <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
@@ -464,15 +461,18 @@ export default function Sales() {
                   <span className="text-muted-foreground">Total</span>
                   <span className="text-2xl font-bold">{formatRWF(total)}</span>
                 </div>
-                {!payInFull && (
-                  <>
-                    <div className="flex justify-between text-sm"><span className="text-muted-foreground">Paid now</span><span>{formatRWF(paid)}</span></div>
-                    {owes > 0 && (
-                      <div className="flex justify-between text-sm font-semibold text-amber-600">
-                        <span>Still owes (goes to debts)</span><span>{formatRWF(owes)}</span>
-                      </div>
-                    )}
-                  </>
+                {(pay.received !== total || !payInFull) && total > 0 && (
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Received</span><span>{formatRWF(pay.received)}</span></div>
+                )}
+                {pay.change > 0 && (
+                  <div className={cn('flex justify-between text-sm font-semibold', pay.changeTooBig ? 'text-destructive' : 'text-green-700 dark:text-green-400')}>
+                    <span>Give back (change, FRW cash)</span><span>{formatRWF(pay.change)}</span>
+                  </div>
+                )}
+                {!payInFull && owes > 0 && (
+                  <div className="flex justify-between text-sm font-semibold text-amber-600">
+                    <span>Still owes (goes to debts)</span><span>{formatRWF(owes)}</span>
+                  </div>
                 )}
               </div>
 
@@ -692,7 +692,18 @@ export default function Sales() {
             </div>
             <div className="rounded-lg bg-muted/50 px-3 py-2 space-y-1">
               <div className="flex justify-between text-base"><span>Total</span><span className="font-bold">{formatRWF(receipt.total)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Paid</span><span>{formatRWF(receipt.amount_paid)}</span></div>
+              {(Array.isArray(receipt.payments) && receipt.payments.length ? receipt.payments as SavedPart[] : null)?.map((p, i) => (
+                <div key={i} className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">
+                    Paid · {METHOD_LABEL[p.method] ?? p.method}
+                    {p.currency !== 'RWF' && <> · <b className="text-foreground">{formatMoney(Number(p.amount), p.currency)}</b> @ {Number(p.rate).toLocaleString('en-US')}</>}
+                  </span>
+                  <span>{formatRWF(Number(p.frw))}</span>
+                </div>
+              )) ?? <div className="flex justify-between"><span className="text-muted-foreground">Paid · {METHOD_LABEL[receipt.payment_method] ?? receipt.payment_method}</span><span>{formatRWF(receipt.amount_paid)}</span></div>}
+              {Number(receipt.change_given) > 0 && (
+                <div className="flex justify-between text-green-700 dark:text-green-400"><span>Change given</span><span>{formatRWF(Number(receipt.change_given))}</span></div>
+              )}
               {receipt.payment_status !== 'paid' && (
                 <div className="flex justify-between text-amber-600 font-semibold">
                   <span>Owes{receipt.due_date ? ` (by ${format(new Date(receipt.due_date), 'dd MMM')})` : ''}</span>

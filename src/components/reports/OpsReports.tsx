@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { formatMoney } from '@/lib/money';
 import { Link } from 'react-router-dom';
 import { differenceInCalendarDays, format } from 'date-fns';
 import { useCashReport, useTempStockSales, METHODS, METHOD_LABEL } from '@/hooks/useOpsReports';
@@ -26,7 +27,7 @@ export function CashReport({ from, to }: { from: string; to: string }) {
   const { data, isLoading } = useCashReport(from, to);
   const period = periodLabel({ from, to });
   if (isLoading || !data) return <Loading />;
-  const { days, total } = data;
+  const { days, total, foreign } = data;
   const active = days.filter(d => d.count || d.repayments);
   const usedMethods = METHODS.filter(m => total.moneyIn[m] > 0);
 
@@ -41,7 +42,7 @@ export function CashReport({ from, to }: { from: string; to: string }) {
       <div className="flex justify-end">
         <ExportButtons disabled={!active.length}
           onCSV={() => downloadCSV(`cash-summary-${from}-to-${to}.csv`,
-            ['Date', 'Sales', 'Sold for (RWF)', 'Paid at till (RWF)', 'On credit (RWF)', 'Debts paid back (RWF)', ...METHODS.map(m => `${METHOD_LABEL[m]} in (RWF)`), 'Money in (RWF)'],
+            ['Date', 'Sales', 'Sold for (FRW)', 'Paid at till (FRW)', 'On credit (FRW)', 'Debts paid back (FRW)', ...METHODS.map(m => `${METHOD_LABEL[m]} in (FRW)`), 'Money in (FRW)'],
             [...active.map(d => [d.day, d.count, d.sales, d.paidAtTill, d.onCredit, d.repayments, ...METHODS.map(m => d.moneyIn[m]), d.totalIn]),
               ['Total', total.count, total.sales, total.paidAtTill, total.onCredit, total.repayments, ...METHODS.map(m => total.moneyIn[m]), total.totalIn]])}
           onPDF={() => downloadPDF(`cash-summary-${from}-to-${to}.pdf`, 'Cash Summary — cash vs credit per day', `Period: ${period}`, [
@@ -56,6 +57,14 @@ export function CashReport({ from, to }: { from: string; to: string }) {
         <StatCard title="Money in" value={formatRWF(total.totalIn)} icon={Banknote} variant="default"
           description={`Includes ${formatRWF(total.repayments)} of debts paid back`} />
       </div>
+
+      {(foreign.USD > 0 || foreign.EUR > 0) && (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+          <b>Foreign money received:</b>{' '}
+          {[foreign.USD > 0 && formatMoney(foreign.USD, 'USD'), foreign.EUR > 0 && formatMoney(foreign.EUR, 'EUR')].filter(Boolean).join(' · ')}
+          <span className="text-muted-foreground"> — these notes should be in the drawer. Their FRW value is already counted in “Money in”; change was given in FRW.</span>
+        </div>
+      )}
 
       <Card>
         <CardHeader className="pb-2">
@@ -137,7 +146,7 @@ export function AgedDebtsReport() {
       <div className="flex justify-end">
         <ExportButtons disabled={!rows.length}
           onCSV={() => downloadCSV(`aged-debts-${format(today, 'yyyy-MM-dd')}.csv`,
-            ['Customer', 'Phone', ...BUCKETS.map(b => `${b} (RWF)`), 'Total owed (RWF)'],
+            ['Customer', 'Phone', ...BUCKETS.map(b => `${b} (FRW)`), 'Total owed (FRW)'],
             [...rows.map(r => [r.name, r.phone, ...r.buckets, r.total]), ['Total', '', ...totals, grand]])}
           onPDF={() => downloadPDF(`aged-debts-${format(today, 'yyyy-MM-dd')}.pdf`, 'Aged Debts (Amadeni)', asOf, [
             { title: 'Summary', head: ['', 'Amount', 'Share'], body: BUCKETS.map((b, i) => [b, formatRWF(totals[i]), `${Math.round((totals[i] / (grand || 1)) * 100)}%`]).concat([['Total owed', formatRWF(grand), '100%']]), totals: true },
@@ -239,7 +248,7 @@ export function TempStockReport({ from, to }: { from: string; to: string }) {
       <div className="flex justify-end">
         <ExportButtons disabled={!inPeriod.length}
           onCSV={() => downloadCSV(`temporary-stock-${from}-to-${to}.csv`,
-            ['Taken', 'Customer', 'Phone', 'Item', 'Size', 'Colour', 'Pieces', 'Deposit (RWF)', 'Bring back by', 'Closed', 'Outcome', 'Sold for (RWF)'],
+            ['Taken', 'Customer', 'Phone', 'Item', 'Size', 'Colour', 'Pieces', 'Deposit (FRW)', 'Bring back by', 'Closed', 'Outcome', 'Sold for (FRW)'],
             inPeriod.map(c => [c.taken_date, c.customer_name, c.customer_phone, c.item_name, c.size, c.color, c.quantity, c.deposit ?? '', c.expected_return_date, c.closed_date, outcome(c.status), c.sale_id ? saleTotals[c.sale_id] ?? '' : '']))}
           onPDF={() => downloadPDF(`temporary-stock-${from}-to-${to}.pdf`, 'Temporary Stock — outcomes', `Taken out: ${period}`, [
             { title: 'Summary', head: ['', 'Pieces / amount'], body: [

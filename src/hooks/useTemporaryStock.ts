@@ -103,18 +103,19 @@ export function useTemporaryStock() {
   // 'returned' puts the pieces back on the shelf. 'sold' records a sale at the
   // agreed price; if less than the total is paid, the rest becomes a debt.
   const closeCheckout = useMutation({
-    mutationFn: async ({ id, outcome, unitPrice, amountPaid, dueDate }: {
+    mutationFn: async ({ id, outcome, unitPrice, payments, dueDate }: {
       id: string;
       outcome: 'returned' | 'sold';
       unitPrice?: number;
-      amountPaid?: number;
+      /** How they paid (FRW / USD / EUR parts); empty = nothing paid yet */
+      payments?: { method: string; currency: string; amount: number; rate: number }[];
       dueDate?: string;
     }) => {
       const { error } = await supabase.rpc('close_temp_checkout', {
         p_checkout_id: id,
         p_outcome: outcome,
         p_unit_price: unitPrice ?? null,
-        p_amount_paid: amountPaid ?? null,
+        p_payments: outcome === 'sold' ? payments ?? [] : null,
         p_due_date: dueDate || null,
       });
       if (error) throw error;
