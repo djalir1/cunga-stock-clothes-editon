@@ -21,6 +21,7 @@ import TemporaryStock from "./pages/TemporaryStock";
 import Sales from "./pages/Sales";
 import Customers from "./pages/Customers";
 import Debts from "./pages/Debts";
+import Orders from "./pages/Orders";
 
 const queryClient = new QueryClient();
 
@@ -81,6 +82,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Debts />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/orders"
+        element={
+          <ProtectedRoute>
+            <Orders />
           </ProtectedRoute>
         }
       />

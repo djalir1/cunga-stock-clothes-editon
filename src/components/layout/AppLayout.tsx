@@ -25,6 +25,7 @@ import {
   ShoppingCart,
   Users,
   HandCoins,
+  Truck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sidebar } from './Sidebar';
@@ -34,6 +35,7 @@ const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/sales', label: 'Sales', icon: ShoppingCart },
   { path: '/stock', label: 'Stock', icon: Package },
+  { path: '/orders', label: 'Orders', icon: Truck },
   { path: '/customers', label: 'Customers', icon: Users },
   { path: '/debts', label: 'Debts', icon: HandCoins },
   { path: '/categories', label: 'Categories', icon: FolderOpen },

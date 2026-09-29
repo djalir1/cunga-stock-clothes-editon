@@ -26,6 +26,7 @@ import {
   ShoppingCart,
   Users,
   HandCoins,
+  Truck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -33,8 +34,9 @@ const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/sales', label: 'Sales', icon: ShoppingCart },
   { path: '/stock', label: 'Stock', icon: Package },
-  { path: '/customers', label: 'Customers', icon: Users, badge: 'New' },
-  { path: '/debts', label: 'Debts', icon: HandCoins, badge: 'New' },
+  { path: '/orders', label: 'Orders', icon: Truck, badge: 'New' },
+  { path: '/customers', label: 'Customers', icon: Users },
+  { path: '/debts', label: 'Debts', icon: HandCoins },
   { path: '/categories', label: 'Categories', icon: FolderOpen },
   { path: '/temporary-stock', label: 'Temporary Stock', icon: Timer },
   { path: '/movements', label: 'History', icon: History },
