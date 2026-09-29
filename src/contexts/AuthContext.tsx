@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import type { AppRole, Profile } from '@/lib/types';
 
 interface AuthContextType {
@@ -25,6 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   // Which user's data we last loaded, so token refreshes don't refetch or flash the loader
   const loadedFor = useRef<string | null>(null);
@@ -55,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         return;
       }
-      if (loadedFor.current === currentSession.user.id) return;
+      if (loadedFor.current === currentSession.user.id) { setLoading(false); return; }
 
       setLoading(true);
       for (let attempt = 0; attempt < 3 && !cancelled; attempt++) {
@@ -84,7 +86,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    return await supabase.auth.signInWithPassword({ email, password });
+    // Show the loader until the account (role) is loaded, so the app goes straight to the dashboard
+    setLoading(true);
+    const result = await supabase.auth.signInWithPassword({ email, password });
+    if (result.error) setLoading(false);
+    return result;
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
@@ -98,7 +104,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    // Sign out everywhere; if the server can't be reached, at least sign out on this device
+    const { error } = await supabase.auth.signOut();
+    if (error) await supabase.auth.signOut({ scope: 'local' });
+    queryClient.clear(); // the next person on this phone never sees the previous person's data
   };
 
   return (

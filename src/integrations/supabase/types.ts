@@ -1049,7 +1049,6 @@ export type Database = {
         }
         Returns: string
       }
-      server_time: { Args: never; Returns: string }
       void_sale: {
         Args: { p_reason: string; p_sale_id: string }
         Returns: number

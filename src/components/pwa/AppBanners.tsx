@@ -1,7 +1,6 @@
 import { useOnline, useUpdateReady } from '@/lib/pwa';
 import { Button } from '@/components/ui/button';
 import { WifiOff, Sparkles } from 'lucide-react';
-import { ClockWarning } from './ClockWarning';
 
 /** Offline warning and "new version ready" bar, shown above every page. */
 export function AppBanners() {
@@ -9,7 +8,6 @@ export function AppBanners() {
   const update = useUpdateReady();
   return (
     <>
-      <ClockWarning />
       {!online && (
         <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
           <WifiOff className="w-4 h-4 shrink-0" />
