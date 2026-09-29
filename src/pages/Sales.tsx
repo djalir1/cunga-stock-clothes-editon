@@ -113,7 +113,7 @@ export default function Sales() {
       if (existing) return prev.map(e => e === existing ? { ...e, quantity: e.quantity + 1 } : e);
       return [...prev, {
         kind: 'set', key, set: setPick.set, parts, quantity: 1,
-        price: setPick.set.usual_price === null ? '' : String(setPick.set.usual_price),
+        price: '',
       }];
     });
     setSetPick(null);
@@ -365,12 +365,15 @@ export default function Sales() {
                         </div>
                       </div>
                       <div className="flex items-center justify-between text-xs">
-                        {e.kind === 'item' && e.variant.default_price !== null && e.price === '' ? (
-                          <button type="button" className="text-primary font-medium"
-                            onClick={() => updateEntry(e.key, { price: String(e.variant.default_price) })}>
-                            Use usual price {formatRWF(e.variant.default_price)}
-                          </button>
-                        ) : <span />}
+                        {(() => {
+                          const usual = e.kind === 'item' ? e.variant.default_price : e.set.usual_price;
+                          return usual !== null && e.price === '' ? (
+                            <button type="button" className="text-primary font-medium"
+                              onClick={() => updateEntry(e.key, { price: String(usual) })}>
+                              Use usual {e.kind === 'set' ? 'set ' : ''}price {formatRWF(usual)}
+                            </button>
+                          ) : <span />;
+                        })()}
                         {e.price !== '' && <span className="font-semibold">{formatRWF(e.quantity * Number(e.price))}</span>}
                       </div>
                     </div>

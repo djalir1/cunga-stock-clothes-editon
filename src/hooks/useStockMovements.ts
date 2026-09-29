@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { MovementType } from '@/lib/types';
 import { variantLabel } from '@/lib/format';
 import { useEffect } from 'react';
+import { channelName } from '@/lib/realtime';
 
 interface StockMovementWithDetails {
   id: string;
@@ -26,7 +27,7 @@ export function useStockMovements(itemId?: string, limit = 50) {
   // Real-time subscription
   useEffect(() => {
     const channel = supabase
-      .channel('stock-movements-changes')
+      .channel(channelName('stock-movements-changes'))
       .on(
         'postgres_changes',
         {

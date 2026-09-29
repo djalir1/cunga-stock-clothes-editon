@@ -1,3 +1,5 @@
+import { PeriodPicker, defaultPeriod, type Period } from '@/components/reports/PeriodPicker';
+import { CashReport, AgedDebtsReport, TempStockReport, LowStockReport } from '@/components/reports/OpsReports';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SalesProfitReport } from '@/components/reports/SalesProfitReport';
 import { useState } from 'react';
@@ -490,19 +492,40 @@ function StockReports() {
   );
 }
 
+const TABS = [
+  { value: 'sales', label: 'Sales & profit', usesPeriod: true },
+  { value: 'cash', label: 'Cash vs credit', usesPeriod: true },
+  { value: 'debts', label: 'Aged debts', usesPeriod: false },
+  { value: 'temp', label: 'Temporary stock', usesPeriod: true },
+  { value: 'low', label: 'Low stock', usesPeriod: false },
+  { value: 'stock', label: 'Stock lists', usesPeriod: false },
+];
+
 export default function Reports() {
+  const [tab, setTab] = useState('sales');
+  const [period, setPeriod] = useState<Period>(defaultPeriod);
+  const usesPeriod = TABS.find(t => t.value === tab)?.usesPeriod;
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-3xl font-bold">Reports</h1>
-        <p className="text-muted-foreground">How the shop is doing: sales, profit, money in, what sells</p>
+        <p className="text-muted-foreground">How the shop is doing — every report downloads as PDF or CSV</p>
       </div>
-      <Tabs defaultValue="sales">
-        <TabsList className="grid w-full max-w-sm grid-cols-2">
-          <TabsTrigger value="sales">Sales & profit</TabsTrigger>
-          <TabsTrigger value="stock">Stock reports</TabsTrigger>
-        </TabsList>
-        <TabsContent value="sales" className="mt-4"><SalesProfitReport /></TabsContent>
+      <Tabs value={tab} onValueChange={setTab}>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="inline-flex w-max">
+            {TABS.map(t => <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>)}
+          </TabsList>
+        </div>
+        {usesPeriod && (
+          <Card className="mt-4"><CardContent className="p-4"><PeriodPicker value={period} onChange={setPeriod} /></CardContent></Card>
+        )}
+        <TabsContent value="sales" className="mt-4"><SalesProfitReport from={period.from} to={period.to} /></TabsContent>
+        <TabsContent value="cash" className="mt-4"><CashReport from={period.from} to={period.to} /></TabsContent>
+        <TabsContent value="debts" className="mt-4"><AgedDebtsReport /></TabsContent>
+        <TabsContent value="temp" className="mt-4"><TempStockReport from={period.from} to={period.to} /></TabsContent>
+        <TabsContent value="low" className="mt-4"><LowStockReport /></TabsContent>
         <TabsContent value="stock" className="mt-4"><StockReports /></TabsContent>
       </Tabs>
     </div>

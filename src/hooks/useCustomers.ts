@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { friendlyError } from '@/lib/format';
+import { channelName } from '@/lib/realtime';
 
 export interface Customer {
   id: string;
@@ -24,7 +25,7 @@ export function useCustomers() {
 
   useEffect(() => {
     const channel = supabase
-      .channel('customers-changes')
+      .channel(channelName('customers-changes'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, () =>
         queryClient.invalidateQueries({ queryKey: ['customers'] }))
       .subscribe();

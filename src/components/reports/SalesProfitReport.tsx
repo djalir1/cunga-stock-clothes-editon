@@ -1,32 +1,19 @@
-import { useMemo, useState } from 'react';
-import { endOfMonth, endOfYear, format, startOfMonth, startOfWeek, startOfYear, subDays, subMonths } from 'date-fns';
+import { useMemo } from 'react';
+import { format } from 'date-fns';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { downloadPDF } from '@/lib/exports';
+import { ExportButtons, periodLabel } from './PeriodPicker';
 import { useSalesReport } from '@/hooks/useSalesReport';
 import { useStockItems } from '@/hooks/useStockItems';
 import { useShopColors } from '@/hooks/useShopColors';
 import { formatRWF } from '@/lib/format';
-import { SHOP } from '@/config/shop';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { TrendingUp, Wallet, ShoppingBag, Coins, FileDown, FileSpreadsheet, RefreshCcw, Info, PackageSearch, Warehouse } from 'lucide-react';
-
-const d = (x: Date) => format(x, 'yyyy-MM-dd');
-const PRESETS: { label: string; range: () => [string, string] }[] = [
-  { label: 'Today', range: () => [d(new Date()), d(new Date())] },
-  { label: 'Yesterday', range: () => [d(subDays(new Date(), 1)), d(subDays(new Date(), 1))] },
-  { label: 'This week', range: () => [d(startOfWeek(new Date(), { weekStartsOn: 1 })), d(new Date())] },
-  { label: 'Last 7 days', range: () => [d(subDays(new Date(), 6)), d(new Date())] },
-  { label: 'This month', range: () => [d(startOfMonth(new Date())), d(new Date())] },
-  { label: 'Last month', range: () => [d(startOfMonth(subMonths(new Date(), 1))), d(endOfMonth(subMonths(new Date(), 1)))] },
-  { label: 'This year', range: () => [d(startOfYear(new Date())), d(new Date() < endOfYear(new Date()) ? new Date() : endOfYear(new Date()))] },
-];
+import { TrendingUp, Wallet, ShoppingBag, Coins, RefreshCcw, Info, PackageSearch, Warehouse } from 'lucide-react';
 
 const pct = (part: number, whole: number) => (whole > 0 ? `${Math.round((part / whole) * 100)}%` : '—');
 
@@ -68,9 +55,7 @@ function GroupTable({ rows, label, render }: {
   );
 }
 
-export function SalesProfitReport() {
-  const [preset, setPreset] = useState('This month');
-  const [[from, to], setRange] = useState<[string, string]>(PRESETS[4].range());
+export function SalesProfitReport({ from, to }: { from: string; to: string }) {
   const { data: r, isLoading } = useSalesReport(from, to);
   const { items } = useStockItems();
   const { hexOf } = useShopColors();
@@ -91,8 +76,7 @@ export function SalesProfitReport() {
     return items.filter(i => i.quantity > 0 && !sold.has(i.name)).sort((a, b) => b.quantity - a.quantity);
   }, [items, r]);
 
-  const periodLabel = from === to ? format(new Date(`${from}T00:00:00`), 'dd MMM yyyy')
-    : `${format(new Date(`${from}T00:00:00`), 'dd MMM yyyy')} – ${format(new Date(`${to}T00:00:00`), 'dd MMM yyyy')}`;
+  const period = periodLabel({ from, to });
 
   const exportCSV = () => {
     if (!r) return;
@@ -110,66 +94,31 @@ export function SalesProfitReport() {
 
   const exportPDF = () => {
     if (!r) return;
-    const doc = new jsPDF();
-    const w = doc.internal.pageSize.width;
-    const navy: [number, number, number] = [30, 58, 138];
-    doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.setTextColor(...navy);
-    doc.text(SHOP.name, 14, 18);
-    doc.setFontSize(12); doc.setTextColor(30, 30, 30);
-    doc.text('Sales & Profit Report', 14, 27);
-    doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100);
-    doc.text(`Period: ${periodLabel}   ·   Printed ${format(new Date(), 'dd MMM yyyy HH:mm')}`, 14, 33);
-    autoTable(doc, {
-      startY: 39, theme: 'grid', headStyles: { fillColor: navy }, styles: { fontSize: 9 },
-      head: [['Summary', 'Amount']],
-      body: [
-        ['Sales', formatRWF(r.revenue)], ['Number of sales', String(r.salesCount)], ['Pieces sold', String(r.pieces)],
-        ['Profit (where cost is known)', formatRWF(r.profit)], ['Margin', pct(r.profit, r.revenueWithCost)],
-        ['Money received', formatRWF(r.received)], ...r.receivedByMethod.map(m => [`   ${m.method}`, formatRWF(m.amount)]),
-        ['Sold on credit', formatRWF(r.creditGiven)], ['Cancelled sales', String(r.cancelled)],
-      ],
-    });
-    const table = (title: string, rows: typeof r.byItem) => autoTable(doc, {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      startY: (doc as any).lastAutoTable.finalY + 8, theme: 'striped', headStyles: { fillColor: navy }, styles: { fontSize: 8.5 },
-      head: [[title, 'Pieces', 'Sales', 'Profit']],
-      body: rows.slice(0, 20).map(g => [g.key, String(g.pieces), formatRWF(g.revenue), formatRWF(g.profit) + (g.costKnown ? '' : '*')]),
-    });
-    table('Best-selling items', r.byItem);
-    table('Categories', r.byCategory);
-    table('Sizes', r.bySize);
-    table('Colours', r.byColor);
-    const pages = doc.getNumberOfPages();
-    for (let i = 1; i <= pages; i++) {
-      doc.setPage(i); doc.setFontSize(8); doc.setTextColor(150, 150, 150);
-      doc.text(`* some pieces have no cost price, so their profit is not counted`, 14, doc.internal.pageSize.height - 10);
-      doc.text(`Page ${i} of ${pages}`, w - 14, doc.internal.pageSize.height - 10, { align: 'right' });
-    }
-    doc.save(`sales-profit-${from}-to-${to}.pdf`);
+    const group = (rows: typeof r.byItem) => rows.slice(0, 25).map(g => [g.key, g.pieces, formatRWF(g.revenue), formatRWF(g.profit) + (g.costKnown ? '' : '*')]);
+    downloadPDF(`sales-profit-${from}-to-${to}.pdf`, 'Sales & Profit Report', `Period: ${period}`, [
+      {
+        title: 'Summary', head: ['', 'Amount'], body: [
+          ['Sales', formatRWF(r.revenue)], ['Number of sales', r.salesCount], ['Pieces sold', r.pieces],
+          ['Profit (where cost is known)', formatRWF(r.profit)], ['Margin', pct(r.profit, r.revenueWithCost)],
+          ['Money received', formatRWF(r.received)], ...r.receivedByMethod.map(m => [`   ${m.method}`, formatRWF(m.amount)]),
+          ['Sold on credit', formatRWF(r.creditGiven)], ['Cancelled sales (not counted)', r.cancelled],
+        ],
+      },
+      {
+        title: 'Sales by day', head: ['Day', 'Sales', 'Amount', 'Profit'], totals: true,
+        body: [...r.byDay.filter(x => x.sales > 0).map(x => [format(new Date(`${x.day}T00:00:00`), 'EEE dd MMM'), x.sales, formatRWF(x.revenue), formatRWF(x.profit)]),
+          ['Total', r.salesCount, formatRWF(r.revenue), formatRWF(r.profit)]],
+      },
+      { title: 'Best-selling items', head: ['Item', 'Pieces', 'Sales', 'Profit'], body: group(r.byItem) },
+      { title: 'By category', head: ['Category', 'Pieces', 'Sales', 'Profit'], body: group(r.byCategory) },
+      { title: 'By size', head: ['Size', 'Pieces', 'Sales', 'Profit'], body: group(r.bySize) },
+      { title: 'By colour', head: ['Colour', 'Pieces', 'Sales', 'Profit'], body: group(r.byColor) },
+    ], '* some pieces have no cost price, so their profit is not counted');
   };
 
   return (
     <div className="space-y-6">
-      {/* Period */}
-      <Card>
-        <CardContent className="p-4 space-y-3">
-          <div className="flex flex-wrap gap-1.5">
-            {PRESETS.map(p => (
-              <Button key={p.label} size="sm" className="h-8" variant={preset === p.label ? 'default' : 'outline'}
-                onClick={() => { setPreset(p.label); setRange(p.range()); }}>{p.label}</Button>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <Input type="date" className="w-40 h-9" value={from} max={to} onChange={e => { setPreset(''); setRange([e.target.value, to]); }} />
-            <span className="text-muted-foreground">to</span>
-            <Input type="date" className="w-40 h-9" value={to} min={from} onChange={e => { setPreset(''); setRange([from, e.target.value]); }} />
-            <div className="flex gap-2 sm:ml-auto">
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={exportCSV} disabled={!r?.lines.length}><FileSpreadsheet className="w-4 h-4" /> CSV</Button>
-              <Button size="sm" className="gap-1.5" onClick={exportPDF} disabled={!r}><FileDown className="w-4 h-4" /> PDF</Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex justify-end"><ExportButtons onCSV={exportCSV} onPDF={exportPDF} disabled={!r?.lines.length} /></div>
 
       {isLoading || !r ? (
         <div className="flex justify-center py-16"><RefreshCcw className="w-8 h-8 animate-spin text-primary" /></div>
@@ -197,15 +146,15 @@ export function SalesProfitReport() {
             <Card className="lg:col-span-2">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">Sales per day</CardTitle>
-                <CardDescription>{periodLabel} · hover a bar for profit</CardDescription>
+                <CardDescription>{period} · amounts in RWF · hover a bar for profit</CardDescription>
               </CardHeader>
               <CardContent className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={r.byDay} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                     <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.6} />
                     <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} stroke="hsl(var(--muted-foreground))" interval="preserveStartEnd" minTickGap={12} />
-                    <YAxis tickLine={false} axisLine={false} fontSize={11} width={48} stroke="hsl(var(--muted-foreground))"
-                      tickFormatter={v => (v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} />
+                    <YAxis tickLine={false} axisLine={false} fontSize={11} width={72} stroke="hsl(var(--muted-foreground))"
+                      tickFormatter={v => new Intl.NumberFormat('en-US').format(v)} />
                     <Tooltip
                       cursor={{ fill: 'hsl(var(--muted))', opacity: 0.5 }}
                       content={({ active, payload }) => {

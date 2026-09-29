@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect } from 'react';
 import { friendlyError } from '@/lib/format';
+import { channelName } from '@/lib/realtime';
 
 export interface StockItemWithCategory extends Omit<StockItem, 'category'> {
   category: Category | null;
@@ -29,7 +30,7 @@ export function useStockItems() {
   // Real-time subscription
   useEffect(() => {
     const channel = supabase
-      .channel('stock-items-changes')
+      .channel(channelName('stock-items-changes'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_items' }, () => {
         queryClient.invalidateQueries({ queryKey: ['stock-items'] });
         queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });

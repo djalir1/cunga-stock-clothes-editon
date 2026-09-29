@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { formatRWF, friendlyError } from '@/lib/format';
 import type { PaymentMethod } from '@/hooks/useSales';
+import { channelName } from '@/lib/realtime';
 
 export interface DebtPayment {
   id: string;
@@ -39,7 +40,7 @@ export function useDebts() {
 
   useEffect(() => {
     const channel = supabase
-      .channel('debts-changes')
+      .channel(channelName('debts-changes'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'debts' }, () => queryClient.invalidateQueries({ queryKey: ['debts'] }))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'debt_payments' }, () => queryClient.invalidateQueries({ queryKey: ['debts'] }))
       .subscribe();

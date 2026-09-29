@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { COLORS } from '@/lib/clothing';
 import { friendlyError } from '@/lib/format';
+import { channelName } from '@/lib/realtime';
 
 export interface PaletteColor {
   name: string;
@@ -12,19 +13,24 @@ export interface PaletteColor {
   saved?: boolean;
 }
 
-/** Built-in colours plus the ones the shop saved, with a name → hex lookup. */
-export function useShopColors() {
+/** Keeps saved colours live for the whole app. Call once, in the layout. */
+export function useShopColorsLive() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
-
   useEffect(() => {
     const channel = supabase
-      .channel('shop-colors-changes')
+      .channel(channelName('shop-colors-changes'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'shop_colors' }, () =>
         queryClient.invalidateQueries({ queryKey: ['shop-colors'] }))
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
+}
+
+/** Built-in colours plus the ones the shop saved, with a name → hex lookup. */
+export function useShopColors() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
 
   const { data: saved = [] } = useQuery({
     queryKey: ['shop-colors'],

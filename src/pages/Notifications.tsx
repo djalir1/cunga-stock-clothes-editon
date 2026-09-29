@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useStockItems } from '@/hooks/useStockItems';
+import { useMemo, useState } from 'react';
+import { useAlerts } from '@/hooks/useAlerts';
 import { useStockMovements } from '@/hooks/useStockMovements';
 import { MOVEMENT_LABELS } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,64 +28,41 @@ interface Notification {
   read: boolean;
 }
 
+const READ_KEY = 'cunga-read-alerts';
+const loadSet = (key: string) => { try { return new Set<string>(JSON.parse(localStorage.getItem(key) ?? '[]')); } catch { return new Set<string>(); } };
+const saveSet = (key: string, set: Set<string>) => { try { localStorage.setItem(key, JSON.stringify([...set].slice(-500))); } catch { /* private mode */ } };
+
 export default function Notifications() {
-  const { items } = useStockItems();
+  const alerts = useAlerts();
   const { data: movements = [] } = useStockMovements();
+  const [readIds, setReadIds] = useState(() => loadSet(READ_KEY));
+  const [cleared, setCleared] = useState<Set<string>>(() => new Set());
 
-  // Generate notifications based on stock status and recent movements
-  const generateNotifications = (): Notification[] => {
-    const notifications: Notification[] = [];
-
-    // Low stock alerts
-    items.filter(item => item.status === 'low_stock').forEach(item => {
-      notifications.push({
-        id: `low-${item.id}`,
-        type: 'warning',
-        title: 'Low Stock Alert',
-        message: `${item.name} is running low (${item.quantity} remaining, min: ${item.min_quantity})`,
-        timestamp: new Date(item.updated_at),
-        read: false,
-      });
-    });
-
-    // Out of stock alerts
-    items.filter(item => item.status === 'out_of_stock').forEach(item => {
-      notifications.push({
-        id: `out-${item.id}`,
-        type: 'warning',
-        title: 'Out of Stock',
-        message: `${item.name} is out of stock and needs restocking`,
-        timestamp: new Date(item.updated_at),
-        read: false,
-      });
-    });
-
-    // Recent movements as info notifications
-    movements.slice(0, 5).forEach(movement => {
-      notifications.push({
-        id: `movement-${movement.id}`,
-        type: ['added', 'returned', 'loan_returned'].includes(movement.movement_type) ? 'success' : 'info',
-        title: MOVEMENT_LABELS[movement.movement_type] ?? movement.movement_type,
-        message: `${movement.item_name || 'Unknown item'}: ${Math.abs(movement.quantity)} ${Math.abs(movement.quantity) === 1 ? 'piece' : 'pieces'}`,
-        timestamp: new Date(movement.created_at),
-        read: true,
-      });
-    });
-
-    return notifications.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-  };
-
-  const [notifications, setNotifications] = useState<Notification[]>(generateNotifications());
+  // Rebuilt whenever stock, debts, orders or temporary stock change (all live)
+  const notifications = useMemo<Notification[]>(() => [
+    ...alerts.map(a => ({ id: a.id, type: 'warning' as const, title: a.title, message: a.message, timestamp: a.timestamp, read: readIds.has(a.id) })),
+    ...movements.slice(0, 8).map(m => ({
+      id: `movement-${m.id}`,
+      type: (['added', 'returned', 'loan_returned'].includes(m.movement_type) ? 'success' : 'info') as Notification['type'],
+      title: MOVEMENT_LABELS[m.movement_type] ?? m.movement_type,
+      message: `${m.item_name || 'Unknown item'}: ${Math.abs(m.quantity)} ${Math.abs(m.quantity) === 1 ? 'piece' : 'pieces'}`,
+      timestamp: new Date(m.created_at),
+      read: true,
+    })),
+  ].filter(n => !cleared.has(n.id)).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()), [alerts, movements, readIds, cleared]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
   const warningCount = notifications.filter(n => n.type === 'warning').length;
 
   const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
+    const next = new Set([...readIds, ...notifications.map(n => n.id)]);
+    setReadIds(next);
+    saveSet(READ_KEY, next);
   };
 
   const clearAll = () => {
-    setNotifications([]);
+    markAllAsRead();
+    setCleared(new Set(notifications.map(n => n.id)));
   };
 
   const getNotificationIcon = (type: string) => {
@@ -179,8 +156,8 @@ export default function Notifications() {
                 <TrendingDown className="w-6 h-6 text-destructive" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{items.filter(i => i.status === 'out_of_stock').length}</p>
-                <p className="text-sm text-muted-foreground">Items Out of Stock</p>
+                <p className="text-2xl font-bold">{alerts.filter(a => a.kind === 'debt').length}</p>
+                <p className="text-sm text-muted-foreground">Overdue payments</p>
               </div>
             </div>
           </CardContent>

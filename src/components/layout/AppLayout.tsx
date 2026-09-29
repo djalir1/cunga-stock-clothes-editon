@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useStockItems } from '@/hooks/useStockItems';
+import { useShopColorsLive } from '@/hooks/useShopColors';
+import { useAlerts } from '@/hooks/useAlerts';
 import { useCategories } from '@/hooks/useCategories';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -51,8 +53,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
 
+  useShopColorsLive();
   const { items } = useStockItems();
-  const alertCount = items.filter(i => i.status === 'low_stock' || i.status === 'out_of_stock').length;
+  const alertCount = useAlerts().length;
   const { categories } = useCategories();
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);

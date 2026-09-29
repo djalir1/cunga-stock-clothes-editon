@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { friendlyError } from '@/lib/format';
+import { channelName } from '@/lib/realtime';
 
 /** An outfit made of several items, e.g. "Suit" = Jacket + Trousers. Stock stays on the parts. */
 export interface ItemSet {
@@ -28,7 +29,7 @@ export function useItemSets() {
 
   useEffect(() => {
     const channel = supabase
-      .channel('item-sets-changes')
+      .channel(channelName('item-sets-changes'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'item_sets' }, () =>
         queryClient.invalidateQueries({ queryKey: ['item-sets'] }))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'item_set_parts' }, () =>

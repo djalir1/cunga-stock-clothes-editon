@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { friendlyError } from '@/lib/format';
+import { channelName } from '@/lib/realtime';
 
 export type OrderStatus = 'ordered' | 'in_transit' | 'partial' | 'received' | 'cancelled';
 
@@ -71,9 +72,10 @@ export function usePurchaseOrders() {
 
   useEffect(() => {
     const channel = supabase
-      .channel('orders-changes')
+      .channel(channelName('orders-changes'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'purchase_orders' }, () => queryClient.invalidateQueries({ queryKey: ['purchase-orders'] }))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'purchase_order_lines' }, () => queryClient.invalidateQueries({ queryKey: ['purchase-orders'] }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers' }, () => queryClient.invalidateQueries({ queryKey: ['suppliers'] }))
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);

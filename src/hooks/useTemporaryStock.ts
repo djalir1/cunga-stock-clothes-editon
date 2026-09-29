@@ -1,7 +1,9 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { friendlyError } from '@/lib/format';
+import { channelName } from '@/lib/realtime';
 
 export type CheckoutStatus = 'out' | 'returned' | 'sold';
 
@@ -38,6 +40,16 @@ export function useTemporaryStock() {
     queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
   };
   const onError = (e: Error) => toast({ title: 'Error', description: friendlyError(e), variant: 'destructive' });
+
+  // Live: another phone checks something out or closes it → this list updates by itself
+  useEffect(() => {
+    const channel = supabase
+      .channel(channelName('temp-stock-changes'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'temp_stock_checkouts' }, () =>
+        queryClient.invalidateQueries({ queryKey: ['temp-stock-checkouts'] }))
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
 
   const { data: checkouts = [], isLoading } = useQuery<TempStockCheckout[]>({
     queryKey: ['temp-stock-checkouts'],

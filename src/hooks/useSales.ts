@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { ReceiptSale } from '@/lib/receipt';
 import { formatRWF, friendlyError } from '@/lib/format';
+import { channelName } from '@/lib/realtime';
 
 export type PaymentMethod = 'cash' | 'mobile_money' | 'bank' | 'other';
 
@@ -47,9 +48,10 @@ export function useSales(limit = 30) {
 
   useEffect(() => {
     const channel = supabase
-      .channel('sales-changes')
+      .channel(channelName('sales-changes'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sales' }, () => {
         queryClient.invalidateQueries({ queryKey: ['sales'] });
+        queryClient.invalidateQueries({ queryKey: ['customers'] });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };

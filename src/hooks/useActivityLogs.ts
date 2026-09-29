@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect } from 'react';
+import { channelName } from '@/lib/realtime';
 
 interface ActivityLogWithUser {
   id: string;
@@ -19,7 +20,7 @@ export function useActivityLogs(limit = 20) {
   // Real-time subscription
   useEffect(() => {
     const channel = supabase
-      .channel('activity-logs-changes')
+      .channel(channelName('activity-logs-changes'))
       .on(
         'postgres_changes',
         {

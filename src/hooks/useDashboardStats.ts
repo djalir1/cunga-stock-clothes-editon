@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { DashboardStats, StockItem, StockMovement, Category } from '@/lib/types';
 import { useEffect } from 'react';
+import { channelName } from '@/lib/realtime';
 
 export function useDashboardStats() {
   const queryClient = useQueryClient();
@@ -9,7 +10,7 @@ export function useDashboardStats() {
   // Real-time subscription for dashboard updates
   useEffect(() => {
     const stockChannel = supabase
-      .channel('dashboard-stock-changes')
+      .channel(channelName('dashboard-stock-changes'))
       .on(
         'postgres_changes',
         {
@@ -24,7 +25,7 @@ export function useDashboardStats() {
       .subscribe();
 
     const movementChannel = supabase
-      .channel('dashboard-movement-changes')
+      .channel(channelName('dashboard-movement-changes'))
       .on(
         'postgres_changes',
         {

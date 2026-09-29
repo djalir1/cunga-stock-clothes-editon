@@ -1,12 +1,23 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Category } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { friendlyError } from '@/lib/format';
+import { channelName } from '@/lib/realtime';
 
 export function useCategories() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(channelName('categories-changes'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () =>
+        queryClient.invalidateQueries({ queryKey: ['categories'] }))
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
 
   const { data: categories = [], isLoading, error } = useQuery({
     queryKey: ['categories'],
