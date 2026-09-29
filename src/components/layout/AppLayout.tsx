@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sidebar } from './Sidebar';
+import { AppBanners } from '@/components/pwa/AppBanners';
 import { Input } from '@/components/ui/input';
 
 const navItems = [
@@ -264,7 +265,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="p-4 lg:p-6">{children}</main>
+        <main className="p-4 lg:p-6"><AppBanners />{children}</main>
       </div>
     </div>
   );

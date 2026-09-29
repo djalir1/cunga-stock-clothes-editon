@@ -29,6 +29,7 @@ import {
   Truck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { InstallButton } from '@/components/pwa/InstallApp';
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -145,6 +146,7 @@ export function Sidebar({ collapsed, onToggle, alertCount = 0 }: SidebarProps) {
 
       {/* Bottom Section */}
       <div className="mt-auto border-t border-sidebar-border p-3 space-y-2">
+        <InstallButton compact={collapsed} className="w-full bg-transparent text-sidebar-foreground border-sidebar-border hover:bg-sidebar-accent" />
         <div className={cn('flex gap-1', collapsed ? 'flex-col' : 'justify-center')}>
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>

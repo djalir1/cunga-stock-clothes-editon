@@ -8,6 +8,7 @@ import { StockStatusChart } from '@/components/dashboard/StockStatusChart';
 import { ActivityTimeline } from '@/components/dashboard/ActivityTimeline';
 import { TopItems } from '@/components/dashboard/TopItems';
 import { useTodaySummary } from '@/hooks/useSales';
+import { InstallCard } from '@/components/pwa/InstallApp';
 import { useTemporaryStock } from '@/hooks/useTemporaryStock';
 import { formatRWF } from '@/lib/format';
 import { ShoppingBag, Timer, HandCoins, AlertTriangle, TrendingUp, Clock } from 'lucide-react';
@@ -45,6 +46,8 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <InstallCard />
 
       {/* Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
