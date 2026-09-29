@@ -70,6 +70,7 @@ export default function Dashboard() {
           icon={HandCoins}
           description="Unpaid balances from credit sales"
           variant="warning"
+          href="/debts"
         />
         <StatCard
           title="Need Restocking"

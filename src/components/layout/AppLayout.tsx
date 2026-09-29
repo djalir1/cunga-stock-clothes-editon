@@ -23,6 +23,8 @@ import {
   X,
   Timer,
   ShoppingCart,
+  Users,
+  HandCoins,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sidebar } from './Sidebar';
@@ -31,7 +33,9 @@ import { Input } from '@/components/ui/input';
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/sales', label: 'Sales', icon: ShoppingCart },
-  { path: '/stock', label: 'Stock Items', icon: Package },
+  { path: '/stock', label: 'Stock', icon: Package },
+  { path: '/customers', label: 'Customers', icon: Users },
+  { path: '/debts', label: 'Debts', icon: HandCoins },
   { path: '/categories', label: 'Categories', icon: FolderOpen },
   { path: '/temporary-stock', label: 'Temporary Stock', icon: Timer },
   { path: '/movements', label: 'History', icon: History },

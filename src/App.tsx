@@ -19,6 +19,8 @@ import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 import TemporaryStock from "./pages/TemporaryStock";
 import Sales from "./pages/Sales";
+import Customers from "./pages/Customers";
+import Debts from "./pages/Debts";
 
 const queryClient = new QueryClient();
 
@@ -63,6 +65,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Sales />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/customers"
+        element={
+          <ProtectedRoute>
+            <Customers />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/debts"
+        element={
+          <ProtectedRoute>
+            <Debts />
           </ProtectedRoute>
         }
       />
