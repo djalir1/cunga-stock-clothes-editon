@@ -100,7 +100,7 @@ export default function History() {
                   />
                 </div>
                 <Select value={movementFilter} onValueChange={setMovementFilter}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Filter by type" />
                   </SelectTrigger>
                   <SelectContent>

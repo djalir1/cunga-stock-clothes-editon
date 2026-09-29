@@ -361,7 +361,7 @@ function StockReports() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Category</label>
                   <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue placeholder="All Categories" />
                     </SelectTrigger>
                     <SelectContent>
@@ -376,7 +376,7 @@ function StockReports() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Status</label>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue placeholder="All Status" />
                     </SelectTrigger>
                     <SelectContent>

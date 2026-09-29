@@ -417,6 +417,42 @@ export type Database = {
           },
         ]
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          device: string | null
+          endpoint: string
+          id: string
+          include_own: boolean
+          last_sent_at: string | null
+          p256dh: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          device?: string | null
+          endpoint: string
+          id?: string
+          include_own?: boolean
+          last_sent_at?: string | null
+          p256dh: string
+          user_id?: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          device?: string | null
+          endpoint?: string
+          id?: string
+          include_own?: boolean
+          last_sent_at?: string | null
+          p256dh?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       sale_items: {
         Row: {
           category_name: string | null
@@ -1013,6 +1049,7 @@ export type Database = {
         }
         Returns: string
       }
+      server_time: { Args: never; Returns: string }
       void_sale: {
         Args: { p_reason: string; p_sale_id: string }
         Returns: number

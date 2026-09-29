@@ -26,6 +26,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ROLE_LABELS } from '@/lib/types';
 import { TeamSection } from '@/components/settings/TeamSection';
+import { SaleAlerts } from '@/components/pwa/SaleAlerts';
 
 export default function Settings() {
   const { user, profile, role, isOwner, signOut } = useAuth();
@@ -153,6 +154,8 @@ export default function Settings() {
           </div>
         </CardContent>
       </Card>
+
+      {(role === 'owner' || role === 'admin') && <SaleAlerts />}
 
       {isOwner && <TeamSection />}
 

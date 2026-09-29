@@ -62,6 +62,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [mobileSearch, setMobileSearch] = useState(false);
 
   // Combined search results (items + categories)
   const searchResults = searchQuery.trim().length < 2
@@ -111,6 +112,47 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const openResult = (r: (typeof searchResults)[number]) => {
+    navigate(`/stock?q=${encodeURIComponent(r.name)}`);
+    setSearchQuery('');
+    setShowSearchResults(false);
+    setMobileSearch(false);
+  };
+
+  const searchBox = (
+    <div className="relative search-container w-full md:w-72 lg:w-80">
+      <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+      <Input
+        autoFocus={mobileSearch}
+        placeholder="Search items or categories..."
+        value={searchQuery}
+        onChange={(e) => { setSearchQuery(e.target.value); setShowSearchResults(true); }}
+        onFocus={() => setShowSearchResults(true)}
+        onKeyDown={(e) => { if (e.key === 'Enter' && searchResults[0]) openResult(searchResults[0]); }}
+        className="pl-9 pr-10 bg-muted/50 border-0 focus-visible:ring-1"
+      />
+      {searchQuery && (
+        <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+          onClick={() => { setSearchQuery(''); setShowSearchResults(false); }}>
+          <X className="h-4 w-4" />
+        </Button>
+      )}
+      {showSearchResults && searchQuery.trim().length >= 2 && (
+        <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border border-border bg-popover shadow-lg max-h-80 overflow-y-auto">
+          {searchResults.length === 0 ? (
+            <p className="px-3 py-3 text-sm text-muted-foreground">Nothing matches “{searchQuery}”.</p>
+          ) : searchResults.map(r => (
+            <button key={`${r.type}-${r.id}`} type="button" onClick={() => openResult(r)}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center justify-between gap-2">
+              <span className="truncate">{r.name}</span>
+              <span className="text-xs text-muted-foreground shrink-0">{r.type === 'item' ? r.category : 'Category'}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       {/* Desktop Sidebar */}
@@ -125,10 +167,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         sidebarCollapsed && 'lg:ml-20'
       )}>
         {/* Header */}
-        <header className="sticky top-0 z-30 h-16 border-b border-border bg-card/80 backdrop-blur-xl">
-          <div className="flex h-full items-center justify-between px-4 lg:px-6">
+        <header className="sticky top-0 z-30 border-b border-border bg-card/80 backdrop-blur-xl">
+          <div className="flex h-16 items-center justify-between gap-2 px-3 sm:px-4 lg:px-6">
             {/* Left */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
                   <Button variant="ghost" size="icon" className="lg:hidden">
@@ -150,7 +192,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       </div>
                     </div>
 
-                    <nav className="flex-1 px-3 py-4 space-y-1">
+                    <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
                       {navItems.map((item) => {
                         const Icon = item.icon;
                         const isActive = location.pathname === item.path;
@@ -206,43 +248,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </SheetContent>
               </Sheet>
 
-              <div>
-                <h1 className="text-lg font-semibold">{currentPage?.label || 'Dashboard'}</h1>
+              <div className="min-w-0">
+                <h1 className="text-lg font-semibold truncate">{currentPage?.label || 'Dashboard'}</h1>
                 <p className="text-xs text-muted-foreground hidden sm:block">
                   Welcome back, {profile?.full_name?.split(' ')[0] || 'User'}
                 </p>
               </div>
             </div>
-            {/* ... remaining search and header code stays the same ... */}
-            <div className="flex items-center gap-3">
-              <div className="relative search-container w-64 md:w-80">
-                <div className="relative">
-                  <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                  <Input
-                    placeholder="Search items or categories..."
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setShowSearchResults(true);
-                    }}
-                    onFocus={() => setShowSearchResults(true)}
-                    className="pl-9 pr-10 bg-muted/50 border-0 focus-visible:ring-1"
-                  />
-                  {searchQuery && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                      onClick={() => {
-                        setSearchQuery('');
-                        setShowSearchResults(false);
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
+            <div className="flex items-center gap-1 sm:gap-3 shrink-0">
+              {/* Desktop: search box. Phones: a search icon that opens a full-width row. */}
+              <div className="hidden md:block">{searchBox}</div>
+              <Button variant="ghost" size="icon" className="md:hidden" aria-label="Search"
+                onClick={() => { setMobileSearch(v => !v); setShowSearchResults(true); }}>
+                {mobileSearch ? <X className="h-5 w-5" /> : <SearchIcon className="h-5 w-5" />}
+              </Button>
 
               <Link to="/notifications">
                 <Button variant="ghost" size="icon" className="relative">
@@ -266,9 +285,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </div>
+          {mobileSearch && <div className="md:hidden border-t border-border bg-card px-4 py-2">{searchBox}</div>}
         </header>
 
-        <main className="p-4 lg:p-6"><AppBanners />{children}</main>
+        <main className="p-4 lg:p-6 overflow-x-hidden"><AppBanners />{children}</main>
       </div>
     </div>
   );

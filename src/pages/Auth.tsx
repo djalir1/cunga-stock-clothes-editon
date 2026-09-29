@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Loader2, ShieldCheck, MessageCircle, Mail, ArrowRight, Check } from 'lucide-react';
 import { z } from 'zod';
 import { CONTACT } from '@/config/contact';
+import { ClockWarning } from '@/components/pwa/ClockWarning';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -110,7 +111,9 @@ export default function Auth() {
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl" />
       </div>
 
-      <Card className="w-full max-w-md relative animate-scale-in">
+      <div className="w-full max-w-md relative">
+      <ClockWarning />
+      <Card className="w-full relative animate-scale-in">
         <CardHeader className="text-center pb-2">
           <div className="flex justify-start">
             <Link
@@ -239,6 +242,7 @@ export default function Auth() {
           </Tabs>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

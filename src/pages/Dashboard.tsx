@@ -9,6 +9,8 @@ import { ActivityTimeline } from '@/components/dashboard/ActivityTimeline';
 import { TopItems } from '@/components/dashboard/TopItems';
 import { useTodaySummary } from '@/hooks/useSales';
 import { InstallCard } from '@/components/pwa/InstallApp';
+import { SaleAlerts } from '@/components/pwa/SaleAlerts';
+import { useAuth } from '@/contexts/AuthContext';
 import { useTemporaryStock } from '@/hooks/useTemporaryStock';
 import { formatRWF } from '@/lib/format';
 import { ShoppingBag, Timer, HandCoins, AlertTriangle, TrendingUp, Clock } from 'lucide-react';
@@ -16,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
 
 export default function Dashboard() {
+  const { role } = useAuth();
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: movements = [], isLoading: movementsLoading } = useStockMovements(undefined, 10);
   const { items, isLoading: itemsLoading } = useStockItems();
@@ -48,6 +51,7 @@ export default function Dashboard() {
       </div>
 
       <InstallCard />
+      {(role === 'owner' || role === 'admin') && <SaleAlerts compact />}
 
       {/* Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

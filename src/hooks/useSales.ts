@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -117,7 +117,14 @@ export function useSales(limit = 30) {
     onError: (e: Error) => toast({ title: 'Not cancelled', description: friendlyError(e), variant: 'destructive' }),
   });
 
-  return { recentSales: recent.data ?? [], isLoading: recent.isLoading, recordSale, voidSale };
+  /** One sale with its lines, e.g. to open the receipt from a notification */
+  const fetchSale = useCallback(async (id: string): Promise<SaleWithLines | null> => {
+    const { data, error } = await supabase.from('sales').select(SALE_SELECT).eq('id', id).maybeSingle();
+    if (error || !data) return null;
+    return { ...data, lines: data.sale_items, due_date: dueDateOf(data.debts as DebtRef) } as SaleWithLines;
+  }, []);
+
+  return { recentSales: recent.data ?? [], isLoading: recent.isLoading, recordSale, voidSale, fetchSale };
 }
 
 export interface TodaySummary {

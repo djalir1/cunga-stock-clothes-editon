@@ -132,6 +132,18 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold tracking-tight;
   }
+
+  /* Never let the page scroll sideways on a phone (clip keeps sticky headers working) */
+  html, body {
+    overflow-x: clip;
+  }
+
+  /* Phones zoom in on text boxes under 16px and stay zoomed — keep them at 16px there */
+  @media (max-width: 767px) {
+    input, textarea, select {
+      font-size: 16px !important;
+    }
+  }
 }
 
 @layer utilities {

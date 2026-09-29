@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { addDays, format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
@@ -45,8 +45,8 @@ export default function Sales() {
   const { canEdit, isOwner } = useAuth();
   const { items, isLoading: itemsLoading } = useStockItems();
   const { sets } = useItemSets();
-  const { recentSales, isLoading: salesLoading, recordSale, voidSale } = useSales();
-  const [searchParams] = useSearchParams();
+  const { recentSales, isLoading: salesLoading, recordSale, voidSale, fetchSale } = useSales();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [pickTab, setPickTab] = useState<'items' | 'sets'>(searchParams.get('tab') === 'sets' ? 'sets' : 'items');
   const [search, setSearch] = useState('');
@@ -59,6 +59,19 @@ export default function Sales() {
   const [receipt, setReceipt] = useState<SaleWithLines | null>(null);
   const [cancelReason, setCancelReason] = useState<string | null>(null);
   const [setPick, setSetPick] = useState<{ set: ItemSet; chosen: Record<string, string> } | null>(null);
+
+  // A tapped phone notification opens /sales?receipt=<id>
+  const receiptParam = searchParams.get('receipt');
+  useEffect(() => {
+    if (!receiptParam) return;
+    let alive = true;
+    fetchSale(receiptParam).then(sale => {
+      if (!alive) return;
+      if (sale) { setReceipt(sale); setCancelReason(null); }
+      setSearchParams({}, { replace: true });
+    });
+    return () => { alive = false; };
+  }, [receiptParam, fetchSale, setSearchParams]);
 
   const itemById = useMemo(() => new Map(items.map(i => [i.id, i])), [items]);
   const inDays = (n: number) => format(addDays(new Date(), n), 'yyyy-MM-dd');

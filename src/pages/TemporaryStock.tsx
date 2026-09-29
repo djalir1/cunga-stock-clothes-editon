@@ -296,28 +296,28 @@ function TemporaryStockContent() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <Card>
-          <CardContent className="pt-5">
-            <div className="flex items-center gap-3">
+          <CardContent className="p-3 sm:pt-5 sm:px-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
               <div className="p-2 bg-primary/10 rounded-lg"><Package className="w-5 h-5 text-primary" /></div>
-              <div><p className="text-2xl font-bold">{piecesOut}</p><p className="text-xs text-muted-foreground">Pieces Out</p></div>
+              <div><p className="text-xl sm:text-2xl font-bold">{piecesOut}</p><p className="text-xs text-muted-foreground">Pieces Out</p></div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-5">
-            <div className="flex items-center gap-3">
+          <CardContent className="p-3 sm:pt-5 sm:px-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
               <div className="p-2 bg-blue-500/10 rounded-lg"><Timer className="w-5 h-5 text-blue-500" /></div>
-              <div><p className="text-2xl font-bold">{openCheckouts.length}</p><p className="text-xs text-muted-foreground">Out with Customers</p></div>
+              <div><p className="text-xl sm:text-2xl font-bold">{openCheckouts.length}</p><p className="text-xs text-muted-foreground">With customers</p></div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-5">
-            <div className="flex items-center gap-3">
+          <CardContent className="p-3 sm:pt-5 sm:px-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
               <div className="p-2 bg-amber-500/10 rounded-lg"><AlertTriangle className="w-5 h-5 text-amber-500" /></div>
-              <div><p className="text-2xl font-bold text-amber-500">{overdueCheckouts.length}</p><p className="text-xs text-muted-foreground">Overdue</p></div>
+              <div><p className="text-xl sm:text-2xl font-bold text-amber-500">{overdueCheckouts.length}</p><p className="text-xs text-muted-foreground">Overdue</p></div>
             </div>
           </CardContent>
         </Card>

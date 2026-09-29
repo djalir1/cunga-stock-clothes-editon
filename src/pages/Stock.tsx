@@ -115,6 +115,13 @@ export default function Stock() {
       setIsAddOpen(true);
       setSearchParams({}, { replace: true });
     }
+    // Header search opens Stock filtered to what was picked
+    const q = searchParams.get('q');
+    if (q !== null) {
+      setSearch(q);
+      setTab('items');
+      setSearchParams({}, { replace: true });
+    }
   }, [searchParams, setSearchParams, isKeeper]);
 
   const filteredItems = items.filter((item) => {
