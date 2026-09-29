@@ -3,6 +3,8 @@
 // Actions (POST JSON):
 //   { action: "public_key" }            → VAPID public key phones subscribe with (created on first use)
 //   { action: "test" }                  → test notification to the caller's own devices (needs their login)
+//   { action: "resubscribe", old_endpoint, subscription } → the phone's service worker got a new push address
+//                                          (works while logged out; the old address identifies the device)
 //   From the database only (x-hook-secret header):
 //   { action: "sale" | "sale_cancelled", sale_id, actor }
 //   { action: "low_stock", item_id, actor }
@@ -478,7 +480,10 @@ Deno.serve(async req => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
 
-  let body: ActivityBody & { action?: string; sale_id?: string; actor?: string | null };
+  let body: ActivityBody & {
+    action?: string; sale_id?: string; actor?: string | null;
+    old_endpoint?: string; subscription?: { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
+  };
   try { body = await req.json(); } catch { return json({ error: "Bad JSON" }, 400); }
 
   try {
@@ -497,6 +502,16 @@ Deno.serve(async req => {
         url: "/dashboard", tag: "test",
       });
       return json({ sent });
+    }
+
+    if (body.action === "resubscribe") {
+      const sub = body.subscription;
+      if (!body.old_endpoint || !sub?.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) return json({ error: "Bad subscription" }, 400);
+      const { data, error } = await db.from("push_subscriptions")
+        .update({ endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth })
+        .eq("endpoint", body.old_endpoint).select("id");
+      if (error) throw error;
+      return json({ updated: data?.length ?? 0 });
     }
 
     // Everything below comes from the database

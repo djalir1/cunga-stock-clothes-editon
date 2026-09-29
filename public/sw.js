@@ -3,7 +3,7 @@
  * and still shows the app shell on a bad connection. Shop data (Supabase API)
  * is never cached: stock, sales and debts are always live.
  */
-const VERSION = 'v6';
+const VERSION = 'v7';
 const SHELL = `shell-${VERSION}`;
 const ASSETS = `assets-${VERSION}`;
 const PHOTOS = 'item-photos';
@@ -102,6 +102,29 @@ self.addEventListener('push', event => {
     data: { url: data.url || '/dashboard' },
     vibrate: [120, 60, 120],
   }));
+});
+
+// The browser sometimes renews a phone's push address (e.g. after an update). Re-register at once and
+// tell the server, so alerts keep arriving even when nobody is logged in to the app.
+const NOTIFY_URL = 'https://grtacefgvlefghagqlma.supabase.co/functions/v1/notify';
+self.addEventListener('pushsubscriptionchange', event => {
+  event.waitUntil((async () => {
+    const old = event.oldSubscription;
+    let key = old && old.options && old.options.applicationServerKey;
+    if (!key) {
+      const res = await fetch(NOTIFY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'public_key' }) });
+      const { publicKey } = await res.json();
+      const pad = '='.repeat((4 - (publicKey.length % 4)) % 4);
+      key = Uint8Array.from(atob((publicKey + pad).replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+    }
+    const sub = event.newSubscription || await self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+    if (!old) return; // nothing to update on the server without the old address
+    await fetch(NOTIFY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'resubscribe', old_endpoint: old.endpoint, subscription: sub.toJSON() }),
+    });
+  })());
 });
 
 // Tap → open the app on that sale (reuse an open window if there is one)
