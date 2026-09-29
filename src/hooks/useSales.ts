@@ -21,7 +21,7 @@ export interface SaleWithLines extends ReceiptSale {
 }
 
 export interface NewSale {
-  lines: { variant_id: string; quantity: number; unit_price: number }[];
+  lines: { variant_id: string; quantity: number; unit_price: number; set_name?: string }[];
   customer?: { id: string | null; name: string; phone: string } | null;
   /** undefined = paid in full */
   amountPaid?: number;
@@ -31,7 +31,7 @@ export interface NewSale {
 
 const SALE_SELECT = `
   id, receipt_no, sold_at, customer_id, customer_name, total, amount_paid, payment_status, payment_method, source,
-  sale_items(item_name, size, color, quantity, unit_price),
+  sale_items(item_name, size, color, quantity, unit_price, set_name),
   debts(id, due_date)
 `;
 

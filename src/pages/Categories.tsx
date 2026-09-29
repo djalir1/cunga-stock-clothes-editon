@@ -18,6 +18,8 @@ const colorPresets = [
   '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1'
 ];
 
+const STARTER_CATEGORIES = ['Shirts & Tops', 'Trousers & Jeans', 'Dresses & Skirts', 'Suits & Sets', 'Shoes', 'Kids', 'Accessories'];
+
 export default function Categories() {
   const { categories, isLoading, addCategory, updateCategory, deleteCategory } = useCategories();
   const { items } = useStockItems();
@@ -64,7 +66,7 @@ export default function Categories() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Categories</h1>
-          <p className="text-muted-foreground">Organize your stock items</p>
+          <p className="text-muted-foreground">Group your clothes, e.g. Shirts, Dresses, Shoes</p>
         </div>
 
         {/* 3. Wrap "Add Category" in a role check */}
@@ -123,6 +125,19 @@ export default function Categories() {
           <CardContent className="py-12 text-center">
             <FolderOpen className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
             <p className="text-muted-foreground">No categories yet. Create one to organize your stock.</p>
+            {isKeeper && (
+              <div className="mt-5 space-y-2">
+                <Button variant="outline" className="gap-2" disabled={addCategory.isPending}
+                  onClick={async () => {
+                    for (const [i, name] of STARTER_CATEGORIES.entries()) {
+                      await addCategory.mutateAsync({ name, description: null, color: colorPresets[i % colorPresets.length] });
+                    }
+                  }}>
+                  <Plus className="w-4 h-4" /> Add the usual clothing categories
+                </Button>
+                <p className="text-xs text-muted-foreground">{STARTER_CATEGORIES.join(' · ')} — you can rename or delete them later.</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       ) : (

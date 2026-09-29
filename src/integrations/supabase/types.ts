@@ -197,6 +197,80 @@ export type Database = {
           },
         ]
       }
+      item_set_parts: {
+        Row: {
+          item_id: string
+          position: number
+          set_id: string
+        }
+        Insert: {
+          item_id: string
+          position?: number
+          set_id: string
+        }
+        Update: {
+          item_id?: string
+          position?: number
+          set_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_set_parts_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "stock_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_set_parts_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "item_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      item_sets: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          notes: string | null
+          updated_at: string
+          usual_price: number | null
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          updated_at?: string
+          usual_price?: number | null
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          updated_at?: string
+          usual_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_sets_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -233,6 +307,7 @@ export type Database = {
           line_total: number | null
           quantity: number
           sale_id: string
+          set_name: string | null
           size: string | null
           unit_price: number
           variant_id: string | null
@@ -245,6 +320,7 @@ export type Database = {
           line_total?: number | null
           quantity: number
           sale_id: string
+          set_name?: string | null
           size?: string | null
           unit_price: number
           variant_id?: string | null
@@ -257,6 +333,7 @@ export type Database = {
           line_total?: number | null
           quantity?: number
           sale_id?: string
+          set_name?: string | null
           size?: string | null
           unit_price?: number
           variant_id?: string | null
@@ -333,6 +410,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      shop_colors: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          hex: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          hex: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          hex?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
       }
       stock_items: {
         Row: {
@@ -698,6 +799,15 @@ export type Database = {
       delete_temp_checkout: {
         Args: { p_checkout_id: string }
         Returns: undefined
+      }
+      pay_customer_debts: {
+        Args: {
+          p_amount: number
+          p_customer_id: string
+          p_method?: string
+          p_note?: string
+        }
+        Returns: number
       }
       record_debt_payment: {
         Args: {

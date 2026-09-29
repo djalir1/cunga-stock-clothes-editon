@@ -9,6 +9,30 @@ export interface ReceiptLine {
   color: string | null;
   quantity: number;
   unit_price: number;
+  /** Set the piece was sold in, e.g. "Linen suit" */
+  set_name?: string | null;
+}
+
+export interface ReceiptGroup {
+  /** null for pieces sold on their own */
+  set_name: string | null;
+  lines: ReceiptLine[];
+  total: number;
+}
+
+/** Pieces sold as part of a set are shown together under the set's name. */
+export function groupReceiptLines(lines: ReceiptLine[]): ReceiptGroup[] {
+  const groups: ReceiptGroup[] = [];
+  const bySet = new Map<string, ReceiptGroup>();
+  for (const l of lines) {
+    const amount = l.quantity * l.unit_price;
+    if (!l.set_name) { groups.push({ set_name: null, lines: [l], total: amount }); continue; }
+    let g = bySet.get(l.set_name);
+    if (!g) { g = { set_name: l.set_name, lines: [], total: 0 }; bySet.set(l.set_name, g); groups.push(g); }
+    g.lines.push(l);
+    g.total += amount;
+  }
+  return groups;
 }
 
 export interface ReceiptSale {
@@ -36,7 +60,8 @@ function buildReceipt(sale: ReceiptSale): jsPDF {
   const width = 80;
   const margin = 5;
   const lineGap = 4.2;
-  const height = 78 + sale.lines.length * 9 + (sale.payment_status !== 'paid' ? 14 : 0);
+  const groups = groupReceiptLines(sale.lines);
+  const height = 78 + sale.lines.length * 9 + groups.filter(g => g.set_name).length * 5 + (sale.payment_status !== 'paid' ? 14 : 0);
   const doc = new jsPDF({ unit: 'mm', format: [width, height] });
   const right = width - margin;
   let y = 9;
@@ -70,7 +95,20 @@ function buildReceipt(sale: ReceiptSale): jsPDF {
   if (sale.customer_name) row('Customer', sale.customer_name);
   rule();
 
-  sale.lines.forEach(l => {
+  groups.forEach(g => {
+    if (g.set_name) {
+      doc.setFontSize(8.5);
+      row(`SET: ${g.set_name}`, formatRWF(g.total), true);
+      doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
+      g.lines.forEach(l => {
+        const option = [l.size, l.color].filter(Boolean).join(' / ');
+        doc.text(doc.splitTextToSize(`  ${l.quantity} × ${l.item_name}${option ? ` (${option})` : ''}`, width - margin * 2)[0], margin, y);
+        y += lineGap;
+      });
+      doc.setFontSize(8);
+      return;
+    }
+    const l = g.lines[0];
     const option = [l.size, l.color].filter(Boolean).join(' / ');
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
     doc.text(doc.splitTextToSize(option ? `${l.item_name} (${option})` : l.item_name, width - margin * 2)[0], margin, y);

@@ -100,12 +100,14 @@ export function useStockItems() {
       name: string;
       category_id?: string | null;
       min_quantity?: number;
+      image_url?: string | null;
       variants: NewVariantInput[];
     }) => {
       const { data, error } = await supabase.rpc('create_stock_item', {
         p_name: item.name,
         p_category_id: item.category_id || null,
         p_min_quantity: item.min_quantity ?? 5,
+        p_image_url: item.image_url ?? undefined,
         p_variants: item.variants.map(v => ({
           size: v.size || null,
           color: v.color || null,
@@ -208,6 +210,26 @@ export function useStockItems() {
     onError: onError('Failed to update item.'),
   });
 
+  /** One price for every size and colour of the item (the usual case), or per variant */
+  const setPrices = useMutation({
+    mutationFn: async ({ itemId, price, variantPrices }: {
+      itemId: string;
+      price?: number | null;
+      variantPrices?: { id: string; price: number | null }[];
+    }) => {
+      if (price !== undefined) {
+        const { error } = await supabase.from('stock_variants').update({ default_price: price }).eq('item_id', itemId);
+        if (error) throw error;
+      }
+      for (const v of variantPrices ?? []) {
+        const { error } = await supabase.from('stock_variants').update({ default_price: v.price }).eq('id', v.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['stock-items'] }),
+    onError: onError('Failed to save the price.'),
+  });
+
   const deleteItem = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('stock_items').delete().eq('id', id);
@@ -232,6 +254,7 @@ export function useStockItems() {
     addItem,
     addVariant,
     updateItem,
+    setPrices,
     deleteItem,
     sellItem,
     restockVariant,
