@@ -1,3 +1,5 @@
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SalesProfitReport } from '@/components/reports/SalesProfitReport';
 import { useState } from 'react';
 import { useStockItems } from '@/hooks/useStockItems';
 import { useStockMovements } from '@/hooks/useStockMovements';
@@ -26,7 +28,7 @@ import { DateRange } from 'react-day-picker';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-export default function Reports() {
+function StockReports() {
   const { items } = useStockItems();
   const { data: movements = [] } = useStockMovements();
   const { categories } = useCategories();
@@ -270,8 +272,8 @@ export default function Reports() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Reports</h1>
-          <p className="text-muted-foreground">Generate and export stock reports</p>
+          <h2 className="text-xl font-semibold">Stock reports</h2>
+          <p className="text-muted-foreground">Stock lists and movement history to export</p>
         </div>
         <div className="flex gap-2">
           <Button onClick={exportToCSV} variant="outline" className="gap-2">
@@ -484,6 +486,25 @@ export default function Reports() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+export default function Reports() {
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div>
+        <h1 className="text-3xl font-bold">Reports</h1>
+        <p className="text-muted-foreground">How the shop is doing: sales, profit, money in, what sells</p>
+      </div>
+      <Tabs defaultValue="sales">
+        <TabsList className="grid w-full max-w-sm grid-cols-2">
+          <TabsTrigger value="sales">Sales & profit</TabsTrigger>
+          <TabsTrigger value="stock">Stock reports</TabsTrigger>
+        </TabsList>
+        <TabsContent value="sales" className="mt-4"><SalesProfitReport /></TabsContent>
+        <TabsContent value="stock" className="mt-4"><StockReports /></TabsContent>
+      </Tabs>
     </div>
   );
 }
