@@ -65,7 +65,7 @@ function VariantChips({ item }: { item: StockItemWithCategory }) {
     <div className="flex flex-wrap gap-1 mt-1">
       {item.variants.map(v => (
         <Badge key={v.id} variant="outline"
-          className={`text-[10px] font-normal gap-1 ${v.quantity === 0 ? 'text-muted-foreground line-through' : ''}`}>
+          className={`text-[10px] font-normal gap-1 whitespace-nowrap ${v.quantity === 0 ? 'text-muted-foreground line-through' : ''}`}>
           <ColorDot color={v.color} className="w-2 h-2" />
           {optionLabel(v.size, v.color)}: {v.quantity}
         </Badge>
@@ -337,7 +337,7 @@ export default function Stock() {
                       <TableBody>
                         {filteredItems.map((item) => (
                           <TableRow key={item.id}>
-                            <TableCell>
+                            <TableCell className="min-w-[20rem]">
                               <div className="flex gap-3">
                                 <ItemThumb url={item.image_url} color={item.category?.color} />
                                 <div className="min-w-0">
