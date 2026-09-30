@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import type { AppRole, Profile } from '@/lib/types';
+import { authStorage } from '@/lib/authStorage';
 
 interface AuthContextType {
   user: User | null;
@@ -106,10 +107,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    // Sign out everywhere; if the server can't be reached, at least sign out on this device
-    const { error } = await supabase.auth.signOut();
-    if (error) await supabase.auth.signOut({ scope: 'local' });
+    // Only this device: logging out on the computer must not log the owner out of their phone.
+    // Alerts stay on for this phone (its push_subscriptions row is kept), so they keep arriving.
+    const result = await Promise.race([
+      supabase.auth.signOut({ scope: 'local' }),
+      new Promise<{ error: Error }>(r => setTimeout(() => r({ error: new Error('timeout') }), 5000)),
+    ]).catch((e: Error) => ({ error: e }));
     queryClient.clear(); // the next person on this phone never sees the previous person's data
+    if (result.error) {
+      // Offline, or the login was already ended elsewhere ("session not found"): Supabase then
+      // keeps the old login on the phone and the Log out button seems to do nothing. Forget it here.
+      try {
+        for (const key of Object.keys(localStorage)) {
+          if (key.startsWith('sb-') && key.includes('-auth-token')) authStorage.removeItem(key);
+        }
+      } catch { /* storage blocked */ }
+      window.location.replace('/auth');
+    }
   };
 
   return (

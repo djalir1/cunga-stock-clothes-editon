@@ -1073,6 +1073,16 @@ export type Database = {
     }
     Functions: {
       notification_overview: { Args: never; Returns: Json }
+      register_push_device: {
+        Args: {
+          p_auth: string
+          p_device: string
+          p_endpoint: string
+          p_include_own?: boolean
+          p_p256dh: string
+        }
+        Returns: undefined
+      }
       add_stock_variant: {
         Args: {
           p_color: string

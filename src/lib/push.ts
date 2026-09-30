@@ -70,9 +70,10 @@ export function usePushAlerts() {
       const sub = (await reg.pushManager.getSubscription())
         ?? await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes((data as { publicKey: string }).publicKey) });
       const json = sub.toJSON();
-      const { error: saveError } = await supabase.from('push_subscriptions').upsert({
-        endpoint: sub.endpoint, p256dh: json.keys!.p256dh, auth: json.keys!.auth, device: deviceName(), include_own: includeOwn,
-      }, { onConflict: 'endpoint' });
+      // Also takes over the phone if someone else had alerts on here before
+      const { error: saveError } = await supabase.rpc('register_push_device', {
+        p_endpoint: sub.endpoint, p_p256dh: json.keys!.p256dh, p_auth: json.keys!.auth, p_device: deviceName(), p_include_own: includeOwn,
+      });
       if (saveError) throw saveError;
       setState('on');
       await test();
