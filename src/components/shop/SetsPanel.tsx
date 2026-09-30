@@ -108,8 +108,8 @@ export function SetsPanel({ canEdit, createSignal }: { canEdit: boolean; createS
                   <Button asChild size="sm" variant="outline" className="gap-1.5 flex-1"><Link to="/sales?tab=sets"><ShoppingCart className="w-3.5 h-3.5" /> Sell</Link></Button>
                   {canEdit && (
                     <>
-                      <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => openEdit(s)} aria-label="Edit set"><Pencil className="w-4 h-4" /></Button>
-                      <Button size="icon" variant="ghost" className="h-9 w-9 text-destructive hover:bg-destructive/10" onClick={() => setDeleting(s)} aria-label="Remove set"><Trash2 className="w-4 h-4" /></Button>
+                      <Button size="icon" variant="outline" className="h-9 w-9" onClick={() => openEdit(s)} aria-label="Edit set"><Pencil className="w-4 h-4" /></Button>
+                      <Button size="icon" variant="outline" className="h-9 w-9 text-destructive border-destructive/40 hover:bg-destructive/10" onClick={() => setDeleting(s)} aria-label="Remove set"><Trash2 className="w-4 h-4" /></Button>
                     </>
                   )}
                 </div>

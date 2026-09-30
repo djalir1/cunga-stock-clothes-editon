@@ -40,7 +40,7 @@ export function QuickActions() {
         {actions.map((action) => (
           <Link key={action.label} to={action.href}>
             <Button
-              variant="ghost"
+              variant="outline"
               className={`w-full h-auto flex-col gap-2 py-4 ${action.color}`}
             >
               <action.icon className="h-5 w-5" />

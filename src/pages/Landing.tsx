@@ -412,9 +412,9 @@ export default function Landing() {
               </button>
               <Link
                 to="/auth"
-                className="hidden sm:inline-flex text-sm font-medium text-muted-foreground hover:text-foreground px-3 py-2 rounded-lg transition-colors"
+                className="inline-flex text-sm font-semibold text-foreground border-2 border-border hover:bg-muted px-3 py-1.5 rounded-lg transition-colors"
               >
-                Login
+                Log in
               </Link>
               <button
                 type="button"

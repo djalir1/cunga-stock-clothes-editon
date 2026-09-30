@@ -234,11 +234,11 @@ export default function Orders() {
               )}
               <ContactButtons compact phone={o.supplier_phone} message={`Hello, this is about order #${o.po_no}. `} />
               {o.status === 'ordered' || o.status === 'in_transit' ? (
-                <Button size="sm" variant="ghost" className="gap-1.5 text-destructive hover:bg-destructive/10 ml-auto" onClick={() => setConfirm({ order: o, action: 'cancel' })}>
+                <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/40 hover:bg-destructive/10 ml-auto" onClick={() => setConfirm({ order: o, action: 'cancel' })}>
                   <Ban className="w-4 h-4" /> Cancel
                 </Button>
               ) : o.status === 'cancelled' ? (
-                <Button size="sm" variant="ghost" className="gap-1.5 text-destructive hover:bg-destructive/10 ml-auto" onClick={() => setConfirm({ order: o, action: 'delete' })}>
+                <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/40 hover:bg-destructive/10 ml-auto" onClick={() => setConfirm({ order: o, action: 'delete' })}>
                   <Trash2 className="w-4 h-4" /> Delete
                 </Button>
               ) : null}
@@ -340,7 +340,7 @@ export default function Orders() {
                 <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">{idx + 1}</span>
                 <div className="flex-1 min-w-0"><ItemCombo items={items} value={l.item} onPick={item => setLine(l.key, { item, unit_cost: l.unit_cost || (item.variants.find(v => v.cost_price !== null)?.cost_price?.toString() ?? '') })} /></div>
                 {lines.length > 1 && (
-                  <Button type="button" size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => setLines(lines.filter(x => x.key !== l.key))}><Trash2 className="w-4 h-4" /></Button>
+                  <Button type="button" size="icon" variant="outline" className="text-destructive border-destructive/40 shrink-0" onClick={() => setLines(lines.filter(x => x.key !== l.key))}><Trash2 className="w-4 h-4" /></Button>
                 )}
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -469,7 +469,7 @@ export default function Orders() {
           );
         })}
         {receiving && (
-          <Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => setArrived(Object.fromEntries(receiving.lines.map(l => [l.id, 0])))}>
+          <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setArrived(Object.fromEntries(receiving.lines.map(l => [l.id, 0])))}>
             <Package className="w-4 h-4" /> Set all to 0
           </Button>
         )}

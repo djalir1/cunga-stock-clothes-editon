@@ -211,7 +211,7 @@ function NewColorPanel({ initialHex, onSaved, onCancel }: {
       </div>
       {taken && <p className="text-xs text-destructive">“{name.trim()}” already exists — pick it from the list above.</p>}
       <div className="flex justify-end gap-2">
-        <Button type="button" size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
+        <Button type="button" size="sm" variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="button" size="sm" onClick={save} disabled={!name.trim() || taken || addColor.isPending}>Save colour</Button>
       </div>
     </div>

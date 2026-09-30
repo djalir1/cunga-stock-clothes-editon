@@ -4,9 +4,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
-import { BellRing, BellOff, Share, Send, X, ShieldCheck } from 'lucide-react';
+import { BellRing, BellOff, Share, Send, X, ShieldCheck, Store } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSupervisorAlerts, type AlertKey } from '@/hooks/useSupervisorAlerts';
+import { useRoleAlerts, type AlertKey, type LimitedRole } from '@/hooks/useSupervisorAlerts';
 import { cn } from '@/lib/utils';
 import { useNotificationPrefs, type NotificationPrefs } from '@/hooks/useNotificationPrefs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -54,18 +54,18 @@ export const ALL_KINDS = ALERT_GROUPS.flatMap(g => g.kinds);
 function AlertChoices() {
   const { role } = useAuth();
   const { prefs, update } = useNotificationPrefs();
-  const { allowed } = useSupervisorAlerts();
-  // Supervisors only see the kinds the owner allows them
-  const isSupervisor = role === 'supervisor';
+  // Supervisors and storekeepers only see the kinds the owner allows their role
+  const limited: LimitedRole | null = role === 'supervisor' || role === 'storekeeper' ? role : null;
+  const { allowed } = useRoleAlerts(limited ?? 'supervisor');
   const groups = ALERT_GROUPS
-    .map(g => ({ ...g, kinds: g.kinds.filter(k => !isSupervisor || allowed.includes(k.key as AlertKey)) }))
+    .map(g => ({ ...g, kinds: g.kinds.filter(k => !limited || allowed.includes(k.key as AlertKey)) }))
     .filter(g => g.kinds.length);
   const kinds = groups.flatMap(g => g.kinds);
   const onCount = kinds.filter(k => prefs[k.key]).length;
   const setAll = (value: boolean) => update.mutate(Object.fromEntries(kinds.map(k => [k.key, value])) as Partial<NotificationPrefs>);
 
-  if (isSupervisor && kinds.length === 0) {
-    return <p className="text-sm text-muted-foreground pt-3 border-t border-border">The owner hasn't allowed any alerts for supervisors yet.</p>;
+  if (limited && kinds.length === 0) {
+    return <p className="text-sm text-muted-foreground pt-3 border-t border-border">The owner hasn't allowed any alerts for {limited}s yet.</p>;
   }
 
   return (
@@ -76,7 +76,7 @@ function AlertChoices() {
         </p>
         <div className="flex gap-1.5">
           <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setAll(true)} disabled={onCount === kinds.length}>Turn all on</Button>
-          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAll(false)} disabled={onCount === 0}>Turn all off</Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setAll(false)} disabled={onCount === 0}>Turn all off</Button>
         </div>
       </div>
       {groups.map(group => (
@@ -108,50 +108,72 @@ function AlertChoices() {
       ))}
       <p className="text-xs text-muted-foreground">
         These choices apply to all your phones and computers. Morning reminders arrive at 8:00.
-        {isSupervisor ? ' The owner decides which alerts supervisors can get.' : " Storekeepers don't receive phone alerts."}
+        {limited ? ` The owner decides which alerts ${limited}s can get.` : ''}
       </p>
     </div>
   );
 }
 
-/** Owner: which alerts supervisors are allowed to receive */
-export function SupervisorAlertsSection() {
-  const { allowed, save } = useSupervisorAlerts();
+const ROLE_TEXT: Record<LimitedRole, { title: string; text: string; icon: typeof ShieldCheck }> = {
+  supervisor: {
+    title: 'Alerts supervisors can get',
+    text: "Supervisors can see everything and make reports, but can't change anything.",
+    icon: ShieldCheck,
+  },
+  storekeeper: {
+    title: 'Alerts storekeepers can get',
+    text: 'Storekeepers sell and look after the stock. Useful for them: running low, temporary stock, deliveries, debts.',
+    icon: Store,
+  },
+};
+
+/** Owner: which alerts supervisors / storekeepers are allowed to receive */
+function RoleAlertsCard({ role }: { role: LimitedRole }) {
+  const { allowed, save } = useRoleAlerts(role);
   const toggle = (key: AlertKey, on: boolean) =>
     save.mutate(on ? [...new Set([...allowed, key])] : allowed.filter(k => k !== key));
+  const { title, text, icon: Icon } = ROLE_TEXT[role];
 
   return (
     <Card>
       <CardContent className="p-4 space-y-3">
         <div>
-          <p className="font-semibold flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-primary" /> Alerts supervisors can get</p>
+          <p className="font-semibold flex items-center gap-2"><Icon className="w-5 h-5 text-primary" /> {title}</p>
           <p className="text-sm text-muted-foreground">
-            Supervisors can see everything and make reports, but can't change anything. Choose which phone alerts they may receive —
-            each supervisor can then switch these on or off for themselves.
+            {text} Choose which phone alerts they may receive. Each of them can then switch these on or off for themselves.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {ALL_KINDS.map(k => {
             const on = allowed.includes(k.key as AlertKey);
             return (
-              <button key={k.key} type="button" onClick={() => toggle(k.key as AlertKey, !on)} title={k.hint}
-                className={cn('rounded-full border px-3 py-1.5 text-sm transition-colors',
-                  on ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border text-muted-foreground hover:bg-muted')}>
-                {on ? '✓ ' : ''}{k.label}
+              <button key={k.key} type="button" onClick={() => toggle(k.key as AlertKey, !on)} title={k.hint} aria-pressed={on}
+                className={cn('rounded-full border-2 px-3 py-1.5 text-sm transition-colors min-h-9',
+                  on ? 'border-primary bg-primary text-primary-foreground font-medium' : 'border-border bg-card text-foreground hover:bg-muted')}>
+                {on ? '✓ ' : '+ '}{k.label}
               </button>
             );
           })}
         </div>
-        <p className="text-xs text-muted-foreground">{allowed.length} of {ALL_KINDS.length} allowed. Tap to allow or block.</p>
+        <p className="text-xs text-muted-foreground">{allowed.length} of {ALL_KINDS.length} allowed. Tap one to allow or block it.</p>
       </CardContent>
     </Card>
+  );
+}
+
+export function SupervisorAlertsSection() {
+  return (
+    <>
+      <RoleAlertsCard role="supervisor" />
+      <RoleAlertsCard role="storekeeper" />
+    </>
   );
 }
 
 const DISMISS_KEY = 'cunga-alerts-card-dismissed';
 
 /**
- * Owner / admins / supervisors: a notification on this phone for everything that happens
+ * Everyone with a role: a notification on this phone for everything that happens
  * in the shop, even when the app is closed. `compact` = the dismissable dashboard card.
  */
 export function SaleAlerts({ compact = false }: { compact?: boolean }) {
@@ -195,7 +217,7 @@ export function SaleAlerts({ compact = false }: { compact?: boolean }) {
             </label>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" className="gap-1.5" onClick={sendTest}><Send className="w-4 h-4" /> Send a test</Button>
-              <Button size="sm" variant="ghost" className="gap-1.5 text-destructive" onClick={disable} disabled={busy}><BellOff className="w-4 h-4" /> Turn off on this device</Button>
+              <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/40" onClick={disable} disabled={busy}><BellOff className="w-4 h-4" /> Turn off on this device</Button>
             </div>
           </div>
         );

@@ -43,7 +43,7 @@ export function CustomerPicker({ value, onChange, placeholder = 'Search or add a
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5"><Phone className="w-3 h-3" />{value.phone}</div>
             )}
           </div>
-          <Button type="button" size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => onChange(null)} aria-label="Change customer">
+          <Button type="button" size="icon" variant="outline" className="h-7 w-7 shrink-0" onClick={() => onChange(null)} aria-label="Change customer">
             <X className="w-4 h-4" />
           </Button>
         </div>

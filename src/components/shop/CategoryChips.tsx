@@ -53,7 +53,7 @@ export function CategoryChips({ value, onChange }: { value: string | null; onCha
           <Input autoFocus placeholder="e.g. Suits & Sets, Dresses, Kids" value={name} onChange={e => setName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); create(); } }} />
           <Button type="button" onClick={create} disabled={!name.trim() || addCategory.isPending}>Add</Button>
-          <Button type="button" variant="ghost" onClick={() => { setAdding(false); setName(''); }}>Cancel</Button>
+          <Button type="button" variant="outline" onClick={() => { setAdding(false); setName(''); }}>Cancel</Button>
         </div>
       )}
     </div>

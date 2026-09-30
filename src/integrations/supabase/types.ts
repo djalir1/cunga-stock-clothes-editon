@@ -656,6 +656,7 @@ export type Database = {
           eur_rate: number
           rates_updated_at: string
           supervisor_alerts: string[]
+          storekeeper_alerts: string[]
           email: string | null
           id: number
           location: string | null
@@ -673,6 +674,7 @@ export type Database = {
           eur_rate?: number
           rates_updated_at?: string
           supervisor_alerts?: string[]
+          storekeeper_alerts?: string[]
           email?: string | null
           id?: number
           location?: string | null
@@ -690,6 +692,7 @@ export type Database = {
           eur_rate?: number
           rates_updated_at?: string
           supervisor_alerts?: string[]
+          storekeeper_alerts?: string[]
           email?: string | null
           id?: number
           location?: string | null

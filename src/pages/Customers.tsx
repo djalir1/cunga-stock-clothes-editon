@@ -49,7 +49,7 @@ function CustomerDetail({ customer, canEdit, onEdit, onPay }: {
           message={customer.owes > 0
             ? `Muraho ${customer.name}, this is ${SHOP.name}. A friendly reminder that your balance is ${formatRWF(customer.owes)}. Murakoze!`
             : `Muraho ${customer.name}, this is ${SHOP.name}. `} />
-        {canEdit && <Button size="sm" variant="ghost" className="gap-1.5 h-8" onClick={onEdit}><Pencil className="w-3.5 h-3.5" /> Edit</Button>}
+        {canEdit && <Button size="sm" variant="outline" className="gap-1.5 h-8" onClick={onEdit}><Pencil className="w-3.5 h-3.5" /> Edit</Button>}
       </div>
       {customer.notes && <p className="text-sm rounded-lg border border-border p-2 bg-muted/30">{customer.notes}</p>}
 

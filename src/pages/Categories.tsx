@@ -165,11 +165,11 @@ export default function Categories() {
 
                     {/* 4. Wrap Edit/Delete buttons in role check */}
                     {isKeeper && (
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button size="icon" variant="ghost" onClick={() => openEditDialog(category)}>
+                      <div className="flex gap-1">
+                        <Button size="icon" variant="outline" onClick={() => openEditDialog(category)}>
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="text-destructive" onClick={() => handleDeleteCategory(category.id)}>
+                        <Button size="icon" variant="outline" className="text-destructive border-destructive/40" onClick={() => handleDeleteCategory(category.id)}>
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>

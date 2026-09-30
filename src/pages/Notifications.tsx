@@ -197,7 +197,7 @@ export default function Notifications() {
         <Button variant="outline" size="sm" onClick={markAllAsRead} disabled={unread.length === 0}>Mark all as read</Button>
       </div>
 
-      {(role === 'owner' || role === 'admin' || role === 'supervisor') && (
+      {role && (
         <Card className="border-dashed">
           <CardContent className="p-3 flex items-center gap-3 text-sm">
             <Bell className="w-4 h-4 text-primary shrink-0" />

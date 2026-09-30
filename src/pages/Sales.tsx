@@ -373,7 +373,7 @@ export default function Sales() {
                             </>
                           )}
                         </div>
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0"
+                        <Button size="icon" variant="outline" className="h-7 w-7 text-destructive border-destructive/40 hover:bg-destructive/10 shrink-0"
                           onClick={() => removeEntry(e.key)} aria-label="Remove">
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -483,7 +483,7 @@ export default function Sales() {
                 </Button>
                 {blockReason && <p className="text-xs text-center text-muted-foreground">{blockReason}</p>}
                 {cart.length > 0 && (
-                  <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={resetSale}>Clear sale</Button>
+                  <Button variant="outline" size="sm" className="w-full " onClick={resetSale}>Clear sale</Button>
                 )}
               </div>
             </CardContent>
@@ -559,7 +559,7 @@ export default function Sales() {
                       <TableCell className="text-right font-semibold whitespace-nowrap">{formatRWF(s.total)}</TableCell>
                       <TableCell>{s.voided_at ? <Badge variant="outline" className="text-destructive border-destructive/40 no-underline">Cancelled</Badge> : <PaymentBadge status={s.payment_status} />}</TableCell>
                       <TableCell className="text-right">
-                        <Button size="icon" variant="ghost" aria-label="Print receipt"
+                        <Button size="icon" variant="outline" aria-label="Print receipt"
                           onClick={e => { e.stopPropagation(); printReceipt(s); }}>
                           <Printer className="w-4 h-4" />
                         </Button>
@@ -622,7 +622,7 @@ export default function Sales() {
         footer={receipt && (
           <>
             {isManager && !receipt.voided_at && cancelReason === null && (
-              <Button variant="ghost" className="gap-2 text-destructive hover:bg-destructive/10 sm:mr-auto" onClick={() => setCancelReason('')}>
+              <Button variant="outline" className="gap-2 text-destructive border-destructive/40 hover:bg-destructive/10 sm:mr-auto" onClick={() => setCancelReason('')}>
                 <Ban className="w-4 h-4" /> Cancel sale
               </Button>
             )}
@@ -648,7 +648,7 @@ export default function Sales() {
                 <p className="text-xs text-muted-foreground">The pieces go back into stock and any debt from this sale is removed. The receipt stays in the records, marked cancelled.</p>
                 <Input autoFocus placeholder="Why? e.g. entered twice, customer returned it" value={cancelReason} onChange={e => setCancelReason(e.target.value)} />
                 <div className="flex justify-end gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => setCancelReason(null)}>Keep sale</Button>
+                  <Button size="sm" variant="outline" onClick={() => setCancelReason(null)}>Keep sale</Button>
                   <Button size="sm" variant="destructive" disabled={!cancelReason.trim() || voidSale.isPending}
                     onClick={async () => {
                       await voidSale.mutateAsync({ saleId: receipt.id, reason: cancelReason });

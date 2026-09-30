@@ -43,30 +43,37 @@ export function PaymentParts({ parts, onChange, summary, autoRest }: {
             {parts.length > 1 && (
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-muted-foreground">Part {i + 1}{isRest ? ' · the rest' : ''}</span>
-                <button type="button" aria-label="Remove this part" className="text-muted-foreground hover:text-destructive"
+                <Button type="button" variant="ghost" size="sm" className="h-8 gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
                   onClick={() => onChange(parts.filter(x => x.id !== p.id))}>
-                  <X className="w-4 h-4" />
-                </button>
+                  <X className="w-4 h-4" /> Remove
+                </Button>
               </div>
             )}
             <div className="flex flex-wrap gap-1.5">
               {METHODS.map(m => (
                 <Button key={m} type="button" size="sm" className="h-8" variant={p.method === m ? 'default' : 'outline'}
-                  onClick={() => update(p.id, { method: m })}>
+                  onClick={() => update(p.id, m === 'mobile_money' && p.currency !== 'RWF'
+                    ? { method: m, currency: 'RWF', amount: '', rate: '' } // Mobile Money is always FRW
+                    : { method: m })}>
                   {METHOD_LABEL[m]}
                 </Button>
               ))}
             </div>
             <div className="flex gap-2">
-              <div className="flex rounded-md border border-border overflow-hidden shrink-0" role="group" aria-label="Currency">
-                {CURRENCIES.map(c => (
-                  <button key={c.value} type="button" onClick={() => setCurrency(p, c.value)}
-                    className={cn('px-2.5 text-xs font-semibold transition-colors',
-                      p.currency === c.value ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground')}>
-                    {c.label}
-                  </button>
-                ))}
-              </div>
+              {p.method === 'mobile_money' ? (
+                <span className="flex items-center rounded-md border border-border bg-muted px-2.5 text-xs font-semibold text-muted-foreground shrink-0"
+                  title="Mobile Money is always in FRW">FRW only</span>
+              ) : (
+                <div className="flex rounded-md border-2 border-border overflow-hidden shrink-0" role="group" aria-label="Currency">
+                  {CURRENCIES.map(c => (
+                    <button key={c.value} type="button" onClick={() => setCurrency(p, c.value)} aria-pressed={p.currency === c.value}
+                      className={cn('px-3 min-h-10 text-xs font-bold transition-colors border-r border-border last:border-r-0',
+                        p.currency === c.value ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-muted text-foreground')}>
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <MoneyInput
                   currency={currencyLabel(p.currency)}

@@ -1,4 +1,4 @@
-// Phone notifications (Web Push) for the owner, the developers (admin role) and supervisors.
+// Phone notifications (Web Push) for everyone in the shop: owner, developers (admin role), supervisors, storekeepers.
 //
 // Actions (POST JSON):
 //   { action: "public_key" }            → VAPID public key phones subscribe with (created on first use)
@@ -14,7 +14,8 @@
 //   { action: "activity", kind, … }     → every other action: stock added / edited / deleted, payments,
 //                                          customers, temporary stock, new / cancelled orders, new accounts
 // Who gets what: owner + developers get everything they switch on (notification_prefs, all on by default);
-// supervisors only the kinds the owner allows (shop_settings.supervisor_alerts). Storekeepers get none.
+// supervisors and storekeepers only the kinds the owner allows them (shop_settings.supervisor_alerts /
+// storekeeper_alerts), and each can switch those off for themselves.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import webpush from "npm:web-push@3.6.7";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -75,21 +76,24 @@ async function config(): Promise<Config> {
 }
 
 /**
- * Owner + developers (admin) + supervisors, with their preferences (missing row = everything on).
- * Supervisors only get the kinds the owner allows (shop_settings.supervisor_alerts).
+ * Everyone with a role, with their preferences (missing row = everything on).
+ * Supervisors and storekeepers only get the kinds the owner allows their role.
  */
 async function recipients(): Promise<Map<string, Prefs>> {
   const [{ data: roles }, { data: shop }] = await Promise.all([
-    db.from("user_roles").select("user_id, role").in("role", ["owner", "admin", "supervisor"]),
-    db.from("shop_settings").select("supervisor_alerts").eq("id", 1).maybeSingle(),
+    db.from("user_roles").select("user_id, role").in("role", ["owner", "admin", "supervisor", "storekeeper"]),
+    db.from("shop_settings").select("supervisor_alerts, storekeeper_alerts").eq("id", 1).maybeSingle(),
   ]);
   const ids = (roles ?? []).map(r => r.user_id);
   const { data: prefs } = ids.length ? await db.from("notification_prefs").select("*").in("user_id", ids) : { data: [] };
   const byUser = new Map((prefs ?? []).map(p => [p.user_id, p as Prefs]));
-  const allowed = (shop?.supervisor_alerts ?? []) as string[];
+  const allowedFor: Record<string, string[] | null> = {
+    supervisor: (shop?.supervisor_alerts ?? []) as string[],
+    storekeeper: (shop?.storekeeper_alerts ?? []) as string[],
+  };
   return new Map((roles ?? []).map(r => [r.user_id, {
     ...(byUser.get(r.user_id) ?? { user_id: r.user_id, debt_due_days: 2 }),
-    allowed: r.role === "supervisor" ? allowed : null,
+    allowed: allowedFor[r.role] ?? null,
   }]));
 }
 const wants = (p: Prefs, key: PrefKey) =>

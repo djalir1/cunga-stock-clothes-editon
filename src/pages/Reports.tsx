@@ -392,7 +392,7 @@ function StockReports() {
 
             {dateRange && (
               <div className="flex items-end">
-                <Button variant="ghost" onClick={() => setDateRange(undefined)}>
+                <Button variant="outline" onClick={() => setDateRange(undefined)}>
                   Clear Dates
                 </Button>
               </div>

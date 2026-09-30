@@ -5,32 +5,38 @@ import { friendlyError } from '@/lib/format';
 import type { NotificationPrefs } from '@/hooks/useNotificationPrefs';
 
 export type AlertKey = Exclude<keyof NotificationPrefs, 'debt_due_days'>;
+/** Roles whose alerts the owner chooses (owner and admins can get every alert) */
+export type LimitedRole = 'supervisor' | 'storekeeper';
+const COLUMN = { supervisor: 'supervisor_alerts', storekeeper: 'storekeeper_alerts' } as const;
 
-/** The alert kinds supervisors are allowed to receive. The owner picks them; supervisors switch them on or off. */
-export function useSupervisorAlerts() {
+/** The alert kinds a role is allowed to receive. The owner picks them; each person switches them on or off. */
+export function useRoleAlerts(role: LimitedRole) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const key = ['role-alerts', role];
 
   const query = useQuery<AlertKey[]>({
-    queryKey: ['supervisor-alerts'],
+    queryKey: key,
     queryFn: async () => {
-      const { data, error } = await supabase.from('shop_settings').select('supervisor_alerts').eq('id', 1).maybeSingle();
+      const { data, error } = await supabase.from('shop_settings').select(COLUMN[role]).eq('id', 1).maybeSingle();
       if (error) throw error;
-      return (data?.supervisor_alerts ?? []) as AlertKey[];
+      return ((data as Record<string, string[]> | null)?.[COLUMN[role]] ?? []) as AlertKey[];
     },
   });
 
   const save = useMutation({
     mutationFn: async (allowed: AlertKey[]) => {
-      const { error } = await supabase.from('shop_settings').update({ supervisor_alerts: allowed }).eq('id', 1);
+      const { error } = await supabase.from('shop_settings').update({ [COLUMN[role]]: allowed }).eq('id', 1);
       if (error) throw error;
     },
-    onMutate: allowed => queryClient.setQueryData(['supervisor-alerts'], allowed),
+    onMutate: allowed => queryClient.setQueryData(key, allowed),
     onError: (e: Error) => {
-      queryClient.invalidateQueries({ queryKey: ['supervisor-alerts'] });
+      queryClient.invalidateQueries({ queryKey: key });
       toast({ title: 'Not saved', description: friendlyError(e), variant: 'destructive' });
     },
   });
 
   return { allowed: query.data ?? [], isLoading: query.isLoading, save };
 }
+
+export const useSupervisorAlerts = () => useRoleAlerts('supervisor');

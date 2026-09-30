@@ -406,7 +406,7 @@ function TemporaryStockContent() {
                               >
                                 <ShoppingBag className="w-3.5 h-3.5" /> Sold
                               </Button>
-                              <Button size="icon" variant="ghost" className="text-destructive hover:bg-destructive/10"
+                              <Button size="icon" variant="outline" className="text-destructive border-destructive/40 hover:bg-destructive/10"
                                 onClick={() => setDeleteCheckoutConfirmId(c.id)}>
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -460,7 +460,7 @@ function TemporaryStockContent() {
                         <TableCell className="text-sm text-muted-foreground">{c.notes || '—'}</TableCell>
                         {isKeeper && (
                           <TableCell className="text-right">
-                            <Button size="icon" variant="ghost" className="text-destructive hover:bg-destructive/10"
+                            <Button size="icon" variant="outline" className="text-destructive border-destructive/40 hover:bg-destructive/10"
                               onClick={() => setDeleteCheckoutConfirmId(c.id)}>
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -495,7 +495,7 @@ function TemporaryStockContent() {
                   <Filter className="w-4 h-4" /> Generate Report
                 </Button>
                 {hasFiltered && (
-                  <Button variant="ghost" onClick={() => { setHasFiltered(false); setReportStart(''); setReportEnd(''); }}>
+                  <Button variant="outline" onClick={() => { setHasFiltered(false); setReportStart(''); setReportEnd(''); }}>
                     Clear
                   </Button>
                 )}
@@ -586,7 +586,7 @@ function TemporaryStockContent() {
                   <span>· {checkoutForm.picked.variant.quantity} on the shelf</span>
                 </div>
               </div>
-              <Button type="button" size="sm" variant="ghost" onClick={() => setCheckoutForm({ ...checkoutForm, picked: null, quantity: 1 })}>Change</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => setCheckoutForm({ ...checkoutForm, picked: null, quantity: 1 })}>Change</Button>
             </div>
           ) : (
             <VariantPicker items={items} onPick={picked => setCheckoutForm({ ...checkoutForm, picked, quantity: 1 })} />

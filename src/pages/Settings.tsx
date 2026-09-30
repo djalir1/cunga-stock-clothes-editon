@@ -153,7 +153,7 @@ export default function Settings() {
 
       <ExchangeRates />
 
-      {(role === 'owner' || role === 'admin' || role === 'supervisor') && <SaleAlerts />}
+      {role && <SaleAlerts />}
 
       {role === 'admin' && <AdminAlertsOverview />}
 

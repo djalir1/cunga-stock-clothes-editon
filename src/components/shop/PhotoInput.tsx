@@ -47,7 +47,7 @@ export function PhotoInput({ url, file, onFile, onRemove }: {
           <Button type="button" size="sm" variant="outline" className="gap-1.5" onClick={() => cameraRef.current?.click()}>
             <Camera className="w-4 h-4" /> Take photo
           </Button>
-          <Button type="button" size="sm" variant="ghost" className="gap-1.5" onClick={() => galleryRef.current?.click()}>
+          <Button type="button" size="sm" variant="outline" className="gap-1.5" onClick={() => galleryRef.current?.click()}>
             <ImagePlus className="w-4 h-4" /> Gallery
           </Button>
         </div>

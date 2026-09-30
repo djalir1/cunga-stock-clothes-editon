@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Code2, RefreshCcw, Smartphone, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+interface Overview { supervisor_alerts: string[]; storekeeper_alerts: string[]; people: Person[] }
+
 interface Person {
   user_id: string;
   name: string;
@@ -22,16 +24,19 @@ interface Person {
  * each person has switched on or off.
  */
 export function AdminAlertsOverview() {
-  const { data, isLoading, refetch, isFetching } = useQuery<{ supervisor_alerts: string[]; people: Person[] }>({
+  const { data, isLoading, refetch, isFetching } = useQuery<Overview>({
     queryKey: ['notification-overview'],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('notification_overview');
       if (error) throw error;
-      return data as unknown as { supervisor_alerts: string[]; people: Person[] };
+      return data as unknown as Overview;
     },
   });
   const people = data?.people ?? [];
-  const supervisorAllowed = data?.supervisor_alerts ?? [];
+  const allowedFor: Partial<Record<AppRole, string[]>> = {
+    supervisor: data?.supervisor_alerts ?? [],
+    storekeeper: data?.storekeeper_alerts ?? [],
+  };
 
   return (
     <Card>
@@ -46,7 +51,7 @@ export function AdminAlertsOverview() {
         </CardTitle>
         <CardDescription>
           Who receives phone alerts, on which devices, and which alerts each person has turned on or off.
-          The owner and admins can receive every alert; supervisors only the ones the owner allows; storekeepers none.
+          The owner and admins can receive every alert; supervisors and storekeepers only the ones the owner allows their role.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -54,9 +59,10 @@ export function AdminAlertsOverview() {
           <div className="flex justify-center py-6"><RefreshCcw className="w-5 h-5 animate-spin text-primary" /></div>
         ) : (
           people.map(p => {
-            const canReceive = p.role !== 'storekeeper';
+            const limit = allowedFor[p.role];
+            const canReceive = !limit || limit.length > 0;
             const prefs = { ...DEFAULT_PREFS, ...(p.prefs ?? {}) };
-            const kinds = p.role === 'supervisor' ? ALL_KINDS.filter(k => supervisorAllowed.includes(k.key)) : ALL_KINDS;
+            const kinds = limit ? ALL_KINDS.filter(k => limit.includes(k.key)) : ALL_KINDS;
             const on = kinds.filter(k => prefs[k.key]);
             return (
               <div key={p.user_id} className="rounded-xl border border-border p-3 space-y-2">
@@ -74,7 +80,7 @@ export function AdminAlertsOverview() {
                   {p.devices.length === 0 ? (
                     <p className="text-muted-foreground flex items-center gap-1.5">
                       <Smartphone className="w-4 h-4" />
-                      {canReceive ? 'No device turned on, so no alerts arrive.' : 'Storekeepers don\'t receive alerts.'}
+                      {canReceive ? 'No device turned on, so no alerts arrive.' : 'The owner hasn\'t allowed any alerts for this role.'}
                     </p>
                   ) : (
                     <ul className="space-y-0.5">

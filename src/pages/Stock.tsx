@@ -200,7 +200,7 @@ export default function Stock() {
   const actionsMenu = (item: StockItemWithCategory) => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button size="icon" variant="ghost" aria-label="More actions"><MoreVertical className="w-4 h-4" /></Button>
+        <Button size="icon" variant="outline" aria-label="More actions"><MoreVertical className="w-4 h-4" /></Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => setEditingItem(item)}><Pencil className="w-4 h-4 mr-2" /> Edit name, price, photo…</DropdownMenuItem>
@@ -367,7 +367,7 @@ export default function Stock() {
                                   <Button size="sm" variant="outline" className="gap-1.5" onClick={() => openRestock(item)}>
                                     <PackagePlus className="w-4 h-4" /> Restock
                                   </Button>
-                                  <Button size="icon" variant="ghost" onClick={() => setEditingItem(item)} aria-label="Edit item">
+                                  <Button size="icon" variant="outline" onClick={() => setEditingItem(item)} aria-label="Edit item">
                                     <Pencil className="w-4 h-4" />
                                   </Button>
                                   {actionsMenu(item)}
